@@ -1,0 +1,28 @@
+{
+  "id": "061d1d51-2801-4966-b02f-1ecb9f0dd1cf",
+  "number": 2,
+  "shortId": "UMGZW",
+  "priority": 4,
+  "name": "Shared filtering core (Rust)",
+  "description": "The filtering engine. One implementation, used by both platforms, with no OS calls in it. Per Project Guidelines §3, all filtering logic lives here and nowhere else.\n\nCURRENT STATE: nothing built. The Python prototypes in the session scratchpad (expand.py, generic.py) prove the expansion arithmetic works against real libphonenumber metadata across all 245 territories; they are throwaway and this feature replaces them.\n\nAPI SHAPE:\n  normalize(raw, defaultRegion) -> E164\n  evaluate(E164, RuleSet) -> Allow | Block | Silence | Label(text)\n  geocode(E164, language) -> Country / Region / City\n  expand(Rule, limit) -> sorted exact numbers, or TooBroad(count)\n  explain(Rule) -> expansion count + per-platform verdict\n\nWHAT IT MUST DO:\n- Rule model covering exact number, pattern, starts-with, ends-with, prefix, caller ID, and location, each as deny or allow (R2).\n- Precedence: most specific wins, so an allow on an exact number beats a deny on the range containing it. Equally specific conflicts are reported, never silently resolved.\n- Expansion for iOS calls, driven by possibleLengths AND nationalNumberPattern. The regex must prune — length-summing alone materially overestimates, badly for landlines (DE fixedLine has 11 possible lengths, 5 to 15).\n- Allow-exceptions resolved at expansion time by set subtraction, since CallKit has no allow list.\n- Prefix-to-place geocoding. The `phonenumber` crate (0.3.10+9.0.33) gives parse/validate/format but NO geocoder — we implement it as a prefix trie over libphonenumber's geocoding files, with user-language then English then prefix-only fallback (R7).\n- Report expansion size and per-platform verdict for any rule, from real data (R2 honesty requirement).\n\nCONSTRAINTS: no country, prefix, length or place name in code (Guidelines §1) — all of it comes from the datasets in F003. The entry limit is injected configuration measured in F001, never a constant (Guidelines §4). Rules are the stored truth; expansions are derived and never persisted as rules (Guidelines §2).\n\nExposed to Kotlin and Swift via UniFFI. Rust was chosen over Kotlin Multiplatform because its C ABI also reaches HarmonyOS if Huawei is ever taken on.\n\nTESTABILITY: this feature is pure logic with no platform dependency, so it can be fully tested on the host before either app exists. It should be, since a filtering bug here is a bug on every platform at once.",
+  "descriptionUpdatedAt": "2026-09-08T08:28:40.084Z",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "startDate": "",
+  "endDate": "",
+  "workDone": "",
+  "workRemaining": "",
+  "acceptedDecisions": [],
+  "phaseIds": [
+    "f2ebcc6f-be9a-4c65-843f-d89765b78397",
+    "9b37746d-bcee-4254-abd7-00d250e8567c",
+    "f2041384-6ad9-4ed6-a3af-32671e549bd5",
+    "529b3fa2-794b-4000-ac8d-e2c0d6746824"
+  ],
+  "dependsOn": [],
+  "statusLog": [],
+  "createdAt": "2026-09-08T08:28:40.076Z",
+  "updatedAt": "2026-09-08T10:02:47.549Z",
+  "sessionInfo": []
+}

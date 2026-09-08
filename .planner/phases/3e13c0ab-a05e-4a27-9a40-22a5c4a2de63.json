@@ -1,0 +1,176 @@
+{
+  "id": "3e13c0ab-a05e-4a27-9a40-22a5c4a2de63",
+  "featureId": "1c2e5d21-fcd8-47f6-b829-5e444de9e755",
+  "number": 16,
+  "shortId": "L9BLE",
+  "priority": 1,
+  "slug": "toolchain-and-developer-environment",
+  "title": "Toolchain and developer environment",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "summary": "From empty directory to a machine that can build everything",
+  "description": "CURRENT STATE, verified on this machine:\n- /Users/antonio/projects/caller-filter is EMPTY and NOT a git repository.\n- Xcode IS installed at /Applications/Xcode.app, with iOS SDK 26.2 (verified by reading CallKit and IdentityLookup headers from it during design).\n- Android SDK is NOT installed — no ~/Library/Android/sdk, no adb, no sdkmanager on PATH. This blocks F001's task T002.\n- No Rust toolchain configured for this project.\n\nWORK:\n- Install the Android SDK (sdkmanager or Android Studio) with platform-tools and a recent platform. This unblocks T002, which is the highest-risk open question in the project.\n- Install Rust and add every target: aarch64-apple-ios, aarch64-apple-ios-sim, x86_64-apple-ios, aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android, plus host.\n- Install cargo-ndk or equivalent for the Android link step, and UniFFI tooling.\n- Confirm what free personal-team Apple provisioning permits for APP EXTENSIONS specifically. Known: it runs apps on your own device with 7-day certificates; App Groups require a paid account. F001's harness must be designed to need no App Group. Check this in Xcode's capabilities pane before building anything, not after.\n- Write down what a fresh machine needs, then verify it by following it on a clean path. An onboarding doc nobody has executed is fiction.\n\nEDGE CASES: Xcode command-line tools selected correctly (xcode-select -p returns /Applications/Xcode.app/Contents/Developer — already verified); Android SDK licences accepted non-interactively for CI; Rust target installs succeeding for the simulator arch matching this Mac.",
+  "descriptionUpdatedAt": "2026-09-08T09:41:48.416Z",
+  "notes": "",
+  "goals": [],
+  "nonGoals": [],
+  "dependencies": [],
+  "dependsOn": [],
+  "risks": [],
+  "openQuestions": [],
+  "decisions": [],
+  "acceptedDecisions": [],
+  "completionCriteria": [],
+  "taskIds": [
+    "47ce7b4d-010f-441c-a718-28e346ed0424"
+  ],
+  "tasks": [
+    {
+      "id": "47ce7b4d-010f-441c-a718-28e346ed0424",
+      "phaseId": "3e13c0ab-a05e-4a27-9a40-22a5c4a2de63",
+      "number": 3,
+      "shortId": "RXS4Q",
+      "priority": 1,
+      "shortName": "install-and-verify-the-toolcha",
+      "title": "Install and verify the toolchain",
+      "status": "done",
+      "description": "Get this machine from \"nothing installed\" to \"can build every target\". Everything else in the plan is blocked behind this — including P001(F001)/T002, which cannot start because there is no Android SDK.\n\nVERIFIED CURRENT STATE OF THIS MACHINE (checked during design, 2026-09-07/08):\n- Xcode IS present at /Applications/Xcode.app. `xcode-select -p` returns /Applications/Xcode.app/Contents/Developer. iOS SDK 26.2 confirmed at Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk — its CallKit and IdentityLookup headers were read directly to verify the platform constraints recorded across this plan.\n- Android SDK is ABSENT. `~/Library/Android/sdk` does not exist; `adb` and `sdkmanager` are not on PATH. THIS IS THE BLOCKER for T002.\n- No Rust toolchain configured for this project.\n- /Users/antonio/projects/caller-filter is empty and is not a git repository (git init belongs to P017, not here).\n\nWORK:\n1. Android SDK — install via Android Studio or standalone commandline-tools. Need platform-tools (adb), a recent compileSdk platform, and licences accepted (`sdkmanager --licenses`) so CI can run non-interactively later. Verify `adb version` and that framework sources are readable, since T002 verifies Android claims by READING the framework the same way the iOS side was done.\n2. Rust — install via rustup, then add every target the build needs: aarch64-apple-ios, aarch64-apple-ios-sim, x86_64-apple-ios, aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android. Host target for tests, since F002 is pure logic and must be testable without a device or simulator.\n3. cargo-ndk (or equivalent) for the Android link step, and the UniFFI tooling.\n4. THE APPLE QUESTION — resolve it here, before anyone builds a harness. There is no paid Apple Developer account. Known: free personal-team provisioning runs apps on your own device with 7-day certificates, and App Groups require a paid account. NOT KNOWN: whether a free personal team can build and run an APP EXTENSION on device at all. This decides whether T001 can proceed. Check Xcode's Signing & Capabilities for an extension target with a personal team selected. If extensions need a paid account, T001 is blocked on purchasing it and that must be reported immediately, not worked around.\n\nEDGE CASES: Xcode command-line tools pointing at the app rather than the standalone CLT (already correct on this machine); Android SDK licences blocking a headless CI run later; the simulator target arch matching this Mac; rustup targets silently failing to install.\n\nDO NOT: create the git repository, project skeletons, or CI here — that is P017. This task ends when every tool is installed and proven to run.\n\n---\n**Completion summary:**\nDONE 2026-09-08. Machine can build every target. Every tool verified by running it, not by trusting the installer.\n\nINSTALLED AND VERIFIED:\n- Rust 1.96.0 / cargo 1.96.0 / rustup 1.29.0 — ALREADY PRESENT at ~/.cargo/bin, contrary to this task's stated assumption. Only host + wasm32-wasip1 targets were installed.\n- Added all six mobile targets: aarch64-apple-ios, aarch64-apple-ios-sim, x86_64-apple-ios, aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android. Confirmed via `rustup target list --installed`.\n- Android SDK installed via `brew install --cask android-commandlinetools` at /opt/homebrew/share/android-commandlinetools. Homebrew and OpenJDK 22 were already present.\n- SDK packages: platform-tools (adb 1.0.41 / 37.0.1, runs), platforms;android-36, sources;android-36 (239 MB), build-tools;36.0.0.\n- SDK licences accepted (52), so CI can run headless later.\n- cargo-ndk 4.1.2 installed and runs.\n- Xcode 26.3, macOS 15.7.9, arm64, 399 GB free.\n\nFINDING 1 — sdkmanager needs an explicit --sdk_root. Without it, `sdkmanager \"platform-tools\"` exits 0 and installs NOTHING. Silent no-op. Every SDK command must pass --sdk_root=\"$ANDROID_HOME\". Also note package naming: the platform is `platforms;android-37.0` (with the .0), while sources are `sources;android-37` — a regex matching `android-[0-9]+` silently truncates the platform name and the install fails with \"Failed to find package\".\n\nFINDING 2 — UniFFI is NOT a global install. `cargo install uniffi_bindgen` fails: \"there is nothing to install in uniffi_bindgen v0.29.5, because it has no binaries\". It is a library. The generator is wired into our own crate as a bin target instead — this moves to P018(F008)/T008. User confirmed against https://mozilla.github.io/uniffi-rs/latest/tutorial/Prerequisites.html.\n\nFINDING 3 — ANDROID FRAMEWORK SOURCES ARE READABLE, which unblocks P001(F001)/T002. Verified present in sources/android-36: android/telecom/CallScreeningService.java (682 lines), android/app/role/RoleManager.java (1335), android/provider/BlockedNumberContract.java (649), android/provider/Telephony.java (5208). T002 can now verify Android claims by reading the framework the same way the iOS side was done, rather than from memory. Early confirmation while checking readability: CallScreeningService.CallResponse.Builder does contain setDisallowCall, setRejectCall, setSilenceCall, setSkipCallLog and setSkipNotification — the assumption recorded on F005/R2/P011 holds. (setSilenceCall is declared `public @NonNull Builder setSilenceCall(boolean)`; a grep for `public Builder set` misses it because of the annotation.) Full verification remains T002's job.\n\nFINDING 4 — THE APPLE QUESTION IS ANSWERED: A FREE PERSONAL TEAM CAN SIGN APP EXTENSIONS. P001(F001)/T001 IS UNBLOCKED and the paid account is NOT needed for it.\nVerified by building a real throwaway app + Call Directory extension, not by assumption. Evidence:\n- Test project generated with xcodegen 2.46.0 (installed for this) at scratchpad/signtest/ — app target plus an app-extension target with NSExtensionPointIdentifier com.apple.callkit.call-directory.\n- `xcodebuild -destination generic/platform=iOS -allowProvisioningUpdates DEVELOPMENT_TEAM=UY66NT5LGF build` → ** BUILD SUCCEEDED ** (exit 0), with `CodeSign .../CallDir.appex`.\n- Certificate created on demand: \"Apple Development: ovidius1972@libero.it (8GT5G9FQ28)\".\n- TWO provisioning profiles created — one for the app, one for the EXTENSION (com.antoniopantano.signtest.calldir). Apple did not refuse the extension.\n- TEAM ID IS UY66NT5LGF. Note the trap: the certificate's own id is 8GT5G9FQ28 and is easy to mistake for the team id; an earlier guess of BJ4HAAB9B3 failed with \"No Account for Team\".\n- Device 00008110-001208843C32801E (the user's iPhone) is in the profile, so it can install.\n\nCONSTRAINTS THIS ESTABLISHES FOR LATER:\n- Free-team profiles expire in SEVEN DAYS (created 2026-09-08, expire 2026-09-15). T001's measurement should be done in one sitting; a rebuild re-signs.\n- The paid account remains a HARD PREREQUISITE for F004, because the real app needs an App Group to share rules between the host app and its two extensions, and App Groups are unavailable to a free team. Free signing is sufficient for measuring, not for the product.\n- The user's iPhone is paired over Wi-Fi, NOT USB. Fine for installing; for T001's memory and timing measurement prefer a cable.\n- macOS will prompt for the login-keychain password on first codesign access. Choose \"Always Allow\" or it prompts every build.\n\nNOT DONE HERE, deliberately: no git repository, no project skeletons, no CI — those are F008. The scratchpad signtest project is throwaway and its \"CallDir\" target name carries no decision; real target naming is P018(F008)/T008, where the extension's bundle identifier matters because it is passed to CXCallDirectoryManager.reloadExtensionWithIdentifier:.\n\nENVIRONMENT NOTE for anyone resuming: ANDROID_HOME and ANDROID_SDK_ROOT are NOT set in the shell profile. Every Android command in this session exported them inline. Setting them persistently belongs to F008's onboarding documentation.",
+      "descriptionUpdatedAt": "2026-09-08T11:06:06.005Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-001-planned-in-progress",
+          "date": "2026-09-08T10:09:41.924Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-002-in-progress-done",
+          "date": "2026-09-08T11:06:06.004Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "DONE 2026-09-08. Machine can build every target. Every tool verified by running it, not by trusting the installer.\n\nINSTALLED AND VERIFIED:\n- Rust 1.96.0 / cargo 1.96.0 / rustup 1.29.0 — ALREADY PRESENT at ~/.cargo/bin, contrary to this task's stated assumption. Only host + wasm32-wasip1 targets were installed.\n- Added all six mobile targets: aarch64-apple-ios, aarch64-apple-ios-sim, x86_64-apple-ios, aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android. Confirmed via `rustup target list --installed`.\n- Android SDK installed via `brew install --cask android-commandlinetools` at /opt/homebrew/share/android-commandlinetools. Homebrew and OpenJDK 22 were already present.\n- SDK packages: platform-tools (adb 1.0.41 / 37.0.1, runs), platforms;android-36, sources;android-36 (239 MB), build-tools;36.0.0.\n- SDK licences accepted (52), so CI can run headless later.\n- cargo-ndk 4.1.2 installed and runs.\n- Xcode 26.3, macOS 15.7.9, arm64, 399 GB free.\n\nFINDING 1 — sdkmanager needs an explicit --sdk_root. Without it, `sdkmanager \"platform-tools\"` exits 0 and installs NOTHING. Silent no-op. Every SDK command must pass --sdk_root=\"$ANDROID_HOME\". Also note package naming: the platform is `platforms;android-37.0` (with the .0), while sources are `sources;android-37` — a regex matching `android-[0-9]+` silently truncates the platform name and the install fails with \"Failed to find package\".\n\nFINDING 2 — UniFFI is NOT a global install. `cargo install uniffi_bindgen` fails: \"there is nothing to install in uniffi_bindgen v0.29.5, because it has no binaries\". It is a library. The generator is wired into our own crate as a bin target instead — this moves to P018(F008)/T008. User confirmed against https://mozilla.github.io/uniffi-rs/latest/tutorial/Prerequisites.html.\n\nFINDING 3 — ANDROID FRAMEWORK SOURCES ARE READABLE, which unblocks P001(F001)/T002. Verified present in sources/android-36: android/telecom/CallScreeningService.java (682 lines), android/app/role/RoleManager.java (1335), android/provider/BlockedNumberContract.java (649), android/provider/Telephony.java (5208). T002 can now verify Android claims by reading the framework the same way the iOS side was done, rather than from memory. Early confirmation while checking readability: CallScreeningService.CallResponse.Builder does contain setDisallowCall, setRejectCall, setSilenceCall, setSkipCallLog and setSkipNotification — the assumption recorded on F005/R2/P011 holds. (setSilenceCall is declared `public @NonNull Builder setSilenceCall(boolean)`; a grep for `public Builder set` misses it because of the annotation.) Full verification remains T002's job.\n\nFINDING 4 — THE APPLE QUESTION IS ANSWERED: A FREE PERSONAL TEAM CAN SIGN APP EXTENSIONS. P001(F001)/T001 IS UNBLOCKED and the paid account is NOT needed for it.\nVerified by building a real throwaway app + Call Directory extension, not by assumption. Evidence:\n- Test project generated with xcodegen 2.46.0 (installed for this) at scratchpad/signtest/ — app target plus an app-extension target with NSExtensionPointIdentifier com.apple.callkit.call-directory.\n- `xcodebuild -destination generic/platform=iOS -allowProvisioningUpdates DEVELOPMENT_TEAM=UY66NT5LGF build` → ** BUILD SUCCEEDED ** (exit 0), with `CodeSign .../CallDir.appex`.\n- Certificate created on demand: \"Apple Development: ovidius1972@libero.it (8GT5G9FQ28)\".\n- TWO provisioning profiles created — one for the app, one for the EXTENSION (com.antoniopantano.signtest.calldir). Apple did not refuse the extension.\n- TEAM ID IS UY66NT5LGF. Note the trap: the certificate's own id is 8GT5G9FQ28 and is easy to mistake for the team id; an earlier guess of BJ4HAAB9B3 failed with \"No Account for Team\".\n- Device 00008110-001208843C32801E (the user's iPhone) is in the profile, so it can install.\n\nCONSTRAINTS THIS ESTABLISHES FOR LATER:\n- Free-team profiles expire in SEVEN DAYS (created 2026-09-08, expire 2026-09-15). T001's measurement should be done in one sitting; a rebuild re-signs.\n- The paid account remains a HARD PREREQUISITE for F004, because the real app needs an App Group to share rules between the host app and its two extensions, and App Groups are unavailable to a free team. Free signing is sufficient for measuring, not for the product.\n- The user's iPhone is paired over Wi-Fi, NOT USB. Fine for installing; for T001's memory and timing measurement prefer a cable.\n- macOS will prompt for the login-keychain password on first codesign access. Choose \"Always Allow\" or it prompts every build.\n\nNOT DONE HERE, deliberately: no git repository, no project skeletons, no CI — those are F008. The scratchpad signtest project is throwaway and its \"CallDir\" target name carries no decision; real target naming is P018(F008)/T008, where the extension's bundle identifier matters because it is passed to CXCallDirectoryManager.reloadExtensionWithIdentifier:.\n\nENVIRONMENT NOTE for anyone resuming: ANDROID_HOME and ANDROID_SDK_ROOT are NOT set in the shell profile. Every Android command in this session exported them inline. Setting them persistently belongs to F008's onboarding documentation."
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-001-install-android-sdk-platform-tools-a-recent-platform-verify-adb-version-runs",
+          "number": 1,
+          "title": "Install Android SDK (platform-tools + a recent platform); verify adb version runs",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-002-accept-android-sdk-licences-so-a-headless-ci-run-is-possible-later",
+          "number": 2,
+          "title": "Accept Android SDK licences so a headless CI run is possible later",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-003-confirm-android-framework-sources-are-readable-on-disk-since-t002-verifies-by-reading-them",
+          "number": 3,
+          "title": "Confirm Android framework sources are readable on disk, since T002 verifies by reading them",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-004-install-rustup-and-the-rust-toolchain",
+          "number": 4,
+          "title": "Install rustup and the Rust toolchain",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-005-add-ios-targets-aarch64-apple-ios-aarch64-apple-ios-sim-x86-64-apple-ios",
+          "number": 5,
+          "title": "Add iOS targets: aarch64-apple-ios, aarch64-apple-ios-sim, x86_64-apple-ios",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-006-add-android-targets-aarch64-linux-android-armv7-linux-androideabi-x86-64-linux-android",
+          "number": 6,
+          "title": "Add Android targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-007-install-cargo-ndk-and-uniffi-tooling",
+          "number": 7,
+          "title": "Install cargo-ndk and UniFFI tooling",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-008-resolve-the-apple-question-can-a-free-personal-team-build-and-run-an-app-extension-on-device-report-immediately-if-not-it-blocks-t001",
+          "number": 8,
+          "title": "RESOLVE THE APPLE QUESTION: can a free personal team build and run an APP EXTENSION on device? Report immediately if not — it blocks T001",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-009-confirm-each-tool-actually-runs-not-just-that-the-installer-finished",
+          "number": 9,
+          "title": "Confirm each tool actually runs, not just that the installer finished",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-010-finding-uniffi-bindgen-0-29-is-a-library-with-no-binary-nothing-to-install-globally-wire-the-generator-into-the-crate-as-a-bin-target-in-t008",
+          "number": 10,
+          "title": "FINDING: uniffi_bindgen 0.29 is a library with no binary — nothing to install globally; wire the generator into the crate as a bin target in T008",
+          "checked": true
+        },
+        {
+          "id": "47ce7b4d-010f-441c-a718-28e346ed0424-check-011-blocked-on-user-sign-into-xcode-with-an-apple-id-xcode-settings-accounts-machine-currently-has-0-code-signing-identities-so-no-free-personal-team-exists-yet",
+          "number": 11,
+          "title": "BLOCKED ON USER: sign into Xcode with an Apple ID (Xcode > Settings > Accounts). Machine currently has 0 code-signing identities, so no free personal team exists yet",
+          "checked": true
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-08T10:09:41.924Z",
+      "completedAt": "2026-09-08T11:06:06.004Z",
+      "createdAt": "2026-09-08T09:56:03.088Z",
+      "updatedAt": "2026-09-08T11:06:06.004Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+          "createdAt": "2026-09-08T10:09:41.904Z"
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-09-08T09:41:48.407Z",
+  "updatedAt": "2026-09-08T11:06:06.004Z",
+  "handoff": "",
+  "handoffUpdatedAt": "",
+  "handoffAudit": null,
+  "handoffReadAt": "",
+  "handoffHistory": [],
+  "statusLog": [
+    {
+      "id": "3e5c7e9b-92a0-49e4-a1ed-fa8ecef9422a",
+      "date": "2026-09-08T10:09:41.934Z",
+      "fromStatus": "draft",
+      "toStatus": "in-progress",
+      "title": "draft → in-progress",
+      "description": ""
+    },
+    {
+      "id": "9aa6346b-f36d-4026-a3fe-bf2bb275b2ee",
+      "date": "2026-09-08T11:06:06.011Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
+      "description": ""
+    }
+  ],
+  "sessionInfo": [
+    {
+      "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+      "createdAt": "2026-09-08T10:09:41.904Z"
+    }
+  ]
+}

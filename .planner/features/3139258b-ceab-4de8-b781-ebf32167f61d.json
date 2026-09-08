@@ -1,0 +1,25 @@
+{
+  "id": "3139258b-ceab-4de8-b781-ebf32167f61d",
+  "number": 6,
+  "shortId": "SDE4N",
+  "priority": 8,
+  "name": "Build, release and store distribution",
+  "description": "Getting a Rust core plus two native apps built reproducibly and into the stores.\n\nCURRENT STATE: nothing built. No git repository yet — /Users/antonio/projects/caller-filter is empty. Repository layout and toolchain are undecided.\n\nBUILD: the Rust core (F002) must cross-compile to aarch64-apple-ios and the iOS simulator targets, and to the Android ABIs (arm64-v8a, armeabi-v7a, x86_64). UniFFI generates the Kotlin and Swift bindings, and that generation belongs in CI rather than checked-in output that can drift from the core. The iOS Call Directory and SMS filter extensions are separate targets that link the same core, and they run under tight memory limits, so binary size and load cost matter more than in the host app.\n\nCI: build the core once per target, run the core's tests on the host (F002 is pure logic and fully testable without a device), then build both apps. The F001 measurement harness needs a real device, so that stays manual.\n\nRELEASE:\n- Apple: ordinary app extensions, no special entitlement for a Call Directory or SMS filter extension. Signing and provisioning for the app plus both extension targets, and an App Group so the app and extensions share rules and data.\n- Google Play: the SMS and Call Log permission groups are restricted. A Permissions Declaration and review are required and approval is not guaranteed. File it early since it runs in parallel with development. This is the only launch dependency outside our control.\n- Huawei AppGallery: a third submission with no Google services. Currently \"possibly\" — confirm before designing for it.\n\nDATA HOSTING: F003's versioned datasets need static hosting only. No application servers in release 1, which is what keeps R8's free-with-no-ads position honest. This changes if R1 lands.\n\nSTORE LISTING MUST NOT OVERPROMISE: R2's honesty requirement applies outward too. The listing should not imply behaviour the platform cannot deliver — particularly that on iPhone the app cannot report blocked calls, cannot offer one-tap block from a received call, and cannot apply very broad rules to calls.",
+  "descriptionUpdatedAt": "2026-09-08T08:29:33.947Z",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "startDate": "",
+  "endDate": "",
+  "workDone": "",
+  "workRemaining": "",
+  "acceptedDecisions": [],
+  "phaseIds": [
+    "1334c009-ad49-44b3-aed4-ed17a91d3259"
+  ],
+  "dependsOn": [],
+  "statusLog": [],
+  "createdAt": "2026-09-08T08:29:33.940Z",
+  "updatedAt": "2026-09-08T10:02:49.799Z",
+  "sessionInfo": []
+}

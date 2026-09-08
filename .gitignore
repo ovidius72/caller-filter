@@ -1,0 +1,57 @@
+# Rust
+/target/
+**/target/
+*.rs.bk
+
+# Generated UniFFI bindings — produced by the build, never committed.
+# Committed bindings drift from the core in silence and only fail at runtime,
+# on one platform. See docs/DECISIONS.md.
+/bindings/
+**/generated/uniffi/
+
+# Packaged datasets — build outputs of the converter, not source.
+# Committing one defeats the versioned over-the-air delivery in R5, and a
+# silently truncated dataset makes rules stop matching with no error anywhere.
+/datasets/build/
+*.dataset
+
+# Upstream data we fetch rather than author
+/vendor/libphonenumber/
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Android / Gradle
+.gradle/
+local.properties
+*.iml
+*.apk
+*.aab
+captures/
+.cxx/
+
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+*.swp
+.vscode/
+
+# Secrets — never commit signing material or API keys
+*.p12
+*.mobileprovision
+*.keystore
+*.jks
+secrets.properties

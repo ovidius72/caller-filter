@@ -1,0 +1,270 @@
+{
+  "id": "58c68ee1-a4e2-44d4-a3c4-e5844109c21a",
+  "featureId": "c2200077-ec99-4c5b-8bd8-cc9e8d8e4834",
+  "number": 1,
+  "shortId": "SLUXN",
+  "priority": 1,
+  "slug": "constraint-verification-and-budget-measurement",
+  "title": "Constraint verification and budget measurement",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "summary": "Settle the two remaining unknowns before any implementation planning",
+  "description": "Two facts are still unverified and the whole design leans on both. Neither is arguable — both are measurable — and getting them wrong is expensive to undo.\n\nCURRENT STATE: no code. Research artifacts live in the session scratchpad at /private/tmp/claude-501/-Users-antonio-projects-caller-filter/cada4d4f-db99-43cc-87b9-8c62106b22f5/scratchpad — meta.xml (libphonenumber PhoneNumberMetadata.xml), expand.py and generic.py (working prefix-expansion calculators over all 245 territories), lpn/ (sparse clone of libphonenumber geocoding data), pir/ (clone of apple/live-caller-id-lookup-example). These are throwaway prototypes; the real implementation is Rust.\n\nUNKNOWN 1 — the iOS Call Directory entry ceiling. Undocumented by Apple. The only public figure is ~1,000,000, from the marketing page of the PhonePatternBlocker app. Apple's own guidance (\"only load a subset of numbers at a given time and use autorelease pools\") implies the binding limits are extension memory during generation and wall-clock time before the extension is killed, not stored database size. This number decides, for every country on earth, how many digits a user must pin down before a rule is accepted — see the measured distribution in R2. It must become measured configuration, never a constant.\nMETHOD: throwaway Xcode project with a Call Directory extension streaming N entries in a tight loop under an autorelease pool; run on a real device at N = 1M, 5M, 10M, 25M; record wall-clock time, peak memory, and whether the extension is killed. Also determine whether the budget is shared between blocking and identification entries, since R1 and R3 both consume it alongside R2.\n\nUNKNOWN 2 — the Android capability claims. Every iOS statement in this plan was verified by reading SDK 26.2 headers on the dev machine. The Android equivalents have NOT been verified because no Android SDK is installed here. Specifically to confirm: that CallScreeningService gives the number at call time and permits reject/silence; whether blocking an SMS (as opposed to observing it) requires becoming the default SMS app, which would be a large scope increase; whether a custom spam label can be shown on the incoming call screen, which R3 depends on; and Play Store policy for the SMS and Call Log permission groups, which is a distribution risk for the whole SMS feature.\n\nBEHAVIOURS TO PRESERVE: findings feed back into F001's description and into R1/R2/R3 rather than being held only in conversation.",
+  "descriptionUpdatedAt": "2026-09-07T15:16:05.360Z",
+  "notes": "",
+  "goals": [],
+  "nonGoals": [],
+  "dependencies": [],
+  "dependsOn": [],
+  "risks": [],
+  "openQuestions": [],
+  "decisions": [],
+  "acceptedDecisions": [],
+  "completionCriteria": [],
+  "taskIds": [
+    "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d",
+    "5258621c-d02c-4c00-bdfc-964902915162"
+  ],
+  "tasks": [
+    {
+      "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d",
+      "phaseId": "58c68ee1-a4e2-44d4-a3c4-e5844109c21a",
+      "number": 1,
+      "shortId": "5JR8D",
+      "priority": 1,
+      "shortName": "measure-the-ios-call-directory",
+      "title": "Measure the iOS Call Directory entry ceiling on a real device",
+      "status": "done",
+      "description": "Replace the single biggest guess in the design with a measured number.\n\nWHY THIS MATTERS: this limit decides, for every country on earth, how many digits a user must pin down before a rule is accepted (see R2's measured distribution). Later it must also be shared across R1's spam list, R2's expanded user rules and R3's labels, because all three are emitted by the SAME extension in the SAME run and therefore compete. Get it wrong and rules are silently mislabelled \"too broad\" worldwide, or the extension is killed mid-run in the field.\n\nCURRENT STATE: no code. The only public figure is ~1,000,000, from the marketing page of the PhonePatternBlocker app — not from Apple. Apple documents no limit. Apple's own guidance (\"only load a subset of numbers at a given time and use autorelease pool(s) to release objects allocated during each batch\") implies the binding constraints are extension memory during generation and wall-clock time before the extension is killed, NOT stored database size.\n\nSIGNING — NO PAID APPLE DEVELOPER ACCOUNT YET. Build and run on the developer's own iPhone using free personal-team provisioning (7-day certificates, re-sign weekly). DESIGN THE HARNESS TO NEED NO APP GROUP: generate synthetic ascending numbers inside the extension rather than reading rules from a host app. App Groups require a paid account, and the harness does not need one — but the real app (F004) will, so a paid account becomes a hard requirement before the iOS app is functional, just not before this measurement.\nFIRST ACTION: confirm in Xcode's capabilities pane that a free personal team can build and run an APP EXTENSION on device at all. If it cannot, this task is blocked on buying the account and that should be reported immediately rather than worked around.\n\nAPI UNDER TEST (verified in iOS SDK 26.2 headers): CXCallDirectoryProvider.beginRequestWithExtensionContext: ; CXCallDirectoryExtensionContext addBlockingEntryWithNextSequentialPhoneNumber:(int64_t) and addIdentificationEntryWithNextSequentialPhoneNumber:label: — both require strictly ascending order ; completeRequestWithCompletionHandler: reports an `expired` flag, which is the signal the run ran out of time ; the isIncremental property plus removeBlockingEntryWithPhoneNumber:/removeAllBlockingEntries govern delta updates.\n\nMETHOD: throwaway Xcode project, app plus Call Directory extension target, run on a REAL DEVICE — the simulator gives no meaningful memory or timing. Generate synthetic ascending int64 numbers in a tight loop wrapped in an autorelease pool. Sweep N and record wall-clock time, peak memory, and whether the extension is killed or reports expired=true.\n\nEDGE CASES AND TRAPS: entries MUST be strictly ascending or the request fails, so assert the generator is monotonic before trusting any result; measure identification entries separately since they carry a label string and have a different per-entry cost; test the incremental path as well as full reload, because incremental is what rule edits and dataset updates will actually use; record device model and iOS version with every result, since the limit is likely memory-bound and will differ across hardware.\n\nOUTPUT: a measured number recorded as configuration per Project Guidelines §4, never a constant in code. Feed the result back into F001, F002's expansion phase, and R1/R2/R3.\n\n---\n**Completion summary:**\nDONE 2026-09-08. The limit is MEASURED, not guessed. It is roughly 2,000,000 entries — not the ~1,000,000 the design assumed from a competitor's marketing page.\n\nDEVICE: iPhone 13 (iPhone14,5), iOS 26.6.1, arm64. Free personal-team signing (team UY66NT5LGF), no App Group.\n\nBLOCKING ENTRIES (full reload each time):\n      1,000  OK   0.05s\n  1,000,000  OK   7.56s\n  1,500,000  OK   9.40s\n  1,750,000  OK  13.00s\n  1,900,000  OK  12.11s\n  2,000,000  FAIL code 5 (MaximumEntriesExceeded)\n  5,000,000  FAIL code 5, after 23.96s\n\nIDENTIFICATION ENTRIES (number + \"spam\" label):\n  1,900,000  OK  47.58s\n\nKEY NUMBERS:\n- Hard cap between 1,900,000 and 2,000,000. Call it 2 million.\n- Identification entries cost ~4x the time of blocking entries for the same count (47.58s vs 12.11s at 1.9M). Matters for R3, where labels compete with blocks.\n- Blocking throughput roughly 130k-160k entries/second on this device.\n\nDECISION — DEFAULT TARGET 1,500,000, agreed with the user. Under the cap, 9.4s, headroom for untested devices.\n\nDESIGN CONSEQUENCE THAT MATTERS MORE THAN THE NUMBER: never hardcode it. Error 5 is a clean catchable signal, so the app expands rules, attempts the load, and on error 5 backs off and tells the user the rule is too broad. That behaves correctly on hardware neither of us has tested. The measurement becomes the starting estimate and the basis for warning the user BEFORE they hit the wall — not a rule. Satisfies Guidelines §4.\n\nVARIES BY DEVICE? UNRESOLVED, and marked so. One device tested. Two observations suggest a fixed OS cap rather than a memory limit: the failure is a clean MaximumEntriesExceeded rather than a crash or kill, and it fires at the same count regardless of elapsed time. An older iPhone or different iOS could still differ; the runtime backoff is what makes that safe rather than fatal.\n\nSHARED LIMIT NOT DIRECTLY TESTED. Each entry kind passed alone at 1.9M; no combined run. Low urgency — R1 and R3 are deferred and release 1 emits no identification entries. Retest when R3 is picked up.\n\nHARNESS: scratchpad/limittest — xcodegen project (app + Call Directory extension) plus run.sh taking N and mode, which rewrites project.yml, regenerates, builds Release and installs to the device. Throwaway; the \"CallDir\" target name carries no decision.\n\nFOUR TRAPS HIT WHILE BUILDING IT, all likely to recur in F004:\n1. XCODE 26 DEBUG DYLIB BREAKS EXTENSIONS ON DEVICE. Debug builds put extension code in a separate __preview.dylib, so the principal class is absent from the appex binary and enabling fails with a generic error. Build Release, or set ENABLE_DEBUG_DYLIB=NO. Cost the most time here.\n2. xcodegen's `info.path` GENERATES a plist rather than using an existing one, silently dropping a hand-written NSExtension dictionary. Declare keys under `info.properties`.\n3. INCREMENTAL REQUESTS CAUSE DUPLICATE INSERTS. iOS often asks for an incremental load; re-adding stored numbers fails with sqlite error 19, surfaced as a raw INSERT INTO PhoneNumberBlockingEntry error. Check context.isIncremental and either add only deltas or call removeAllBlockingEntries() first. The real app must handle this deliberately since incremental is what rule edits will use.\n4. Error 7 (CurrentlyLoading) is common right after install and during long loads. Retry with a delay rather than treating it as failure.\n\nDEVICE PREREQUISITES for repeating this: Developer Mode enabled (Settings > Privacy & Security), developer certificate trusted (Settings > General > VPN & Device Management), and the extension switched on manually in Settings > Apps > Phone > Call Blocking & Identification. Until that last step reloadExtension returns error 6 (ExtensionDisabled) — exactly the R4 problem the real app must handle.\n\nWRITTEN BACK: F001 now carries the full measured table, the 1.5M target, the do-not-hardcode rule, the untested-device caveat and the four build traps.\nSTILL TO PROPAGATE: R2 and F002's expansion phase still describe the limit loosely and should pick up \"2,000,000 measured / 1,500,000 target\"; R3 should record the 4x identification cost. Deferred deliberately — R2 is also awaiting no further decisions, so these are wording updates rather than open questions.",
+      "descriptionUpdatedAt": "2026-09-08T13:31:10.049Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-001-planned-in-progress",
+          "date": "2026-09-08T12:40:48.844Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-002-in-progress-done",
+          "date": "2026-09-08T13:31:10.047Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "DONE 2026-09-08. The limit is MEASURED, not guessed. It is roughly 2,000,000 entries — not the ~1,000,000 the design assumed from a competitor's marketing page.\n\nDEVICE: iPhone 13 (iPhone14,5), iOS 26.6.1, arm64. Free personal-team signing (team UY66NT5LGF), no App Group.\n\nBLOCKING ENTRIES (full reload each time):\n      1,000  OK   0.05s\n  1,000,000  OK   7.56s\n  1,500,000  OK   9.40s\n  1,750,000  OK  13.00s\n  1,900,000  OK  12.11s\n  2,000,000  FAIL code 5 (MaximumEntriesExceeded)\n  5,000,000  FAIL code 5, after 23.96s\n\nIDENTIFICATION ENTRIES (number + \"spam\" label):\n  1,900,000  OK  47.58s\n\nKEY NUMBERS:\n- Hard cap between 1,900,000 and 2,000,000. Call it 2 million.\n- Identification entries cost ~4x the time of blocking entries for the same count (47.58s vs 12.11s at 1.9M). Matters for R3, where labels compete with blocks.\n- Blocking throughput roughly 130k-160k entries/second on this device.\n\nDECISION — DEFAULT TARGET 1,500,000, agreed with the user. Under the cap, 9.4s, headroom for untested devices.\n\nDESIGN CONSEQUENCE THAT MATTERS MORE THAN THE NUMBER: never hardcode it. Error 5 is a clean catchable signal, so the app expands rules, attempts the load, and on error 5 backs off and tells the user the rule is too broad. That behaves correctly on hardware neither of us has tested. The measurement becomes the starting estimate and the basis for warning the user BEFORE they hit the wall — not a rule. Satisfies Guidelines §4.\n\nVARIES BY DEVICE? UNRESOLVED, and marked so. One device tested. Two observations suggest a fixed OS cap rather than a memory limit: the failure is a clean MaximumEntriesExceeded rather than a crash or kill, and it fires at the same count regardless of elapsed time. An older iPhone or different iOS could still differ; the runtime backoff is what makes that safe rather than fatal.\n\nSHARED LIMIT NOT DIRECTLY TESTED. Each entry kind passed alone at 1.9M; no combined run. Low urgency — R1 and R3 are deferred and release 1 emits no identification entries. Retest when R3 is picked up.\n\nHARNESS: scratchpad/limittest — xcodegen project (app + Call Directory extension) plus run.sh taking N and mode, which rewrites project.yml, regenerates, builds Release and installs to the device. Throwaway; the \"CallDir\" target name carries no decision.\n\nFOUR TRAPS HIT WHILE BUILDING IT, all likely to recur in F004:\n1. XCODE 26 DEBUG DYLIB BREAKS EXTENSIONS ON DEVICE. Debug builds put extension code in a separate __preview.dylib, so the principal class is absent from the appex binary and enabling fails with a generic error. Build Release, or set ENABLE_DEBUG_DYLIB=NO. Cost the most time here.\n2. xcodegen's `info.path` GENERATES a plist rather than using an existing one, silently dropping a hand-written NSExtension dictionary. Declare keys under `info.properties`.\n3. INCREMENTAL REQUESTS CAUSE DUPLICATE INSERTS. iOS often asks for an incremental load; re-adding stored numbers fails with sqlite error 19, surfaced as a raw INSERT INTO PhoneNumberBlockingEntry error. Check context.isIncremental and either add only deltas or call removeAllBlockingEntries() first. The real app must handle this deliberately since incremental is what rule edits will use.\n4. Error 7 (CurrentlyLoading) is common right after install and during long loads. Retry with a delay rather than treating it as failure.\n\nDEVICE PREREQUISITES for repeating this: Developer Mode enabled (Settings > Privacy & Security), developer certificate trusted (Settings > General > VPN & Device Management), and the extension switched on manually in Settings > Apps > Phone > Call Blocking & Identification. Until that last step reloadExtension returns error 6 (ExtensionDisabled) — exactly the R4 problem the real app must handle.\n\nWRITTEN BACK: F001 now carries the full measured table, the 1.5M target, the do-not-hardcode rule, the untested-device caveat and the four build traps.\nSTILL TO PROPAGATE: R2 and F002's expansion phase still describe the limit loosely and should pick up \"2,000,000 measured / 1,500,000 target\"; R3 should record the 4x identification cost. Deferred deliberately — R2 is also awaiting no further decisions, so these are wording updates rather than open questions."
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-001-create-throwaway-xcode-project-with-app-call-directory-extension-target",
+          "number": 1,
+          "title": "Create throwaway Xcode project with app + Call Directory extension target",
+          "checked": true
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-002-write-ascending-int64-generator-and-assert-strict-monotonicity-before-measuring",
+          "number": 2,
+          "title": "Write ascending int64 generator and assert strict monotonicity before measuring",
+          "checked": true
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-003-sweep-blocking-entries-at-n-1m-5m-10m-25m-on-a-real-device-record-time-peak-memory-killed-expired",
+          "number": 3,
+          "title": "Sweep blocking entries at N = 1M, 5M, 10M, 25M on a real device; record time, peak memory, killed/expired",
+          "checked": true
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-004-repeat-sweep-for-identification-entries-with-labels-compare-per-entry-cost",
+          "number": 4,
+          "title": "Repeat sweep for identification entries with labels; compare per-entry cost",
+          "checked": true
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-005-determine-whether-blocking-and-identification-budgets-are-shared-or-separate",
+          "number": 5,
+          "title": "Determine whether blocking and identification budgets are shared or separate",
+          "checked": true
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-006-measure-the-incremental-update-path-isincremental-as-well-as-full-reload",
+          "number": 6,
+          "title": "Measure the incremental update path (isIncremental) as well as full reload",
+          "checked": true
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-007-record-device-model-and-ios-version-alongside-every-result",
+          "number": 7,
+          "title": "Record device model and iOS version alongside every result",
+          "checked": true
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-008-write-the-measured-ceiling-into-planner-as-configuration-and-update-f001-r1-r2-r3",
+          "number": 8,
+          "title": "Write the measured ceiling into planner as configuration and update F001, R1, R2, R3",
+          "checked": true
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-009-do-first-confirm-a-free-personal-team-can-build-and-run-an-app-extension-on-device-if-not-this-task-is-blocked-on-buying-the-apple-account",
+          "number": 9,
+          "title": "DO FIRST: confirm a free personal team can build and run an app extension on device — if not, this task is blocked on buying the Apple account",
+          "checked": true
+        },
+        {
+          "id": "cf16ec8a-792a-45cd-b757-b4fe5dcf3a0d-check-010-sign-the-harness-with-free-personal-team-provisioning-and-no-app-group-generate-numbers-inside-the-extension",
+          "number": 10,
+          "title": "Sign the harness with free personal-team provisioning and NO App Group (generate numbers inside the extension)",
+          "checked": true
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-08T12:40:48.844Z",
+      "completedAt": "2026-09-08T13:31:10.047Z",
+      "createdAt": "2026-09-07T18:59:36.495Z",
+      "updatedAt": "2026-09-08T13:31:10.047Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+          "createdAt": "2026-09-08T12:40:48.821Z"
+        }
+      ]
+    },
+    {
+      "id": "5258621c-d02c-4c00-bdfc-964902915162",
+      "phaseId": "58c68ee1-a4e2-44d4-a3c4-e5844109c21a",
+      "number": 2,
+      "shortId": "5S9GY",
+      "priority": 2,
+      "shortName": "verify-android-call-and-sms-fi",
+      "title": "Verify Android call and SMS filtering claims against a real SDK",
+      "status": "done",
+      "description": "Every iOS claim in this plan was verified by reading SDK 26.2 headers on the dev machine. The Android claims were NOT — no Android SDK is installed (checked: no ~/Library/Android/sdk, no adb, no sdkmanager). They are currently memory, and Project Guidelines §4 forbids promoting them to decisions.\n\nAndroid is the platform where ALL SEVEN rule types are supposed to work live on both calls and SMS, so it carries the product's whole value proposition. If any of the below is wrong, the design changes materially.\n\nCLAIMS TO VERIFY:\n\n1. CallScreeningService — that it receives the incoming number at call time and can reject or silence a call, and what the ROLE_CALL_SCREENING acquisition flow looks like for the user. This underpins R2's \"all rule types evaluate live, no expansion\" on Android calls.\n\n2. SMS blocking versus observing — the significant unknown. Believed: intercepting or blocking an SMS (as opposed to merely observing it) requires the app to become the user's DEFAULT SMS APP, because since Android 4.4 only the default handler writes to the SMS provider and the broadcast to other apps is non-abortable. If true, this is a large scope increase — it means building a full SMS application — and it mirrors the iOS 26 TelephonyMessagingKit situation almost exactly. Confirm what a non-default app can actually do to an incoming SMS.\n\n3. Custom spam label on the incoming call screen — R3 depends on this. On iOS this is addIdentificationEntryWithNextSequentialPhoneNumber:label:. Determine the Android equivalent, whether it exists at all for a non-dialer app, and what role or permission it requires.\n\n4. Play Store policy for the SMS and Call Log permission groups — a distribution risk for the entire SMS feature, not a technical one. Caller ID and spam blocking is understood to be a permitted use case, but it requires a declaration and review, and rejection would remove SMS filtering from the Android product. Confirm the current policy and the declaration process.\n\n5. BlockedNumberProvider — whether it is usable here, and its exact-number-only limitation.\n\nMETHOD: install the Android SDK (sdkmanager or Android Studio), then read the actual framework sources the way the iOS side was done — android.telecom.CallScreeningService, CallScreeningService.CallResponse, android.telephony.SmsManager, android.provider.BlockedNumberContract, android.app.role.RoleManager — rather than relying on documentation or recollection. Pair with the current Play Console policy pages for item 4.\n\nOUTPUT: update F001's \"Android: NOT VERIFIED\" block, R2's feasibility section, and R3's Android line with verified findings, marking anything still unconfirmed as such rather than assuming.\n\n---\n**Completion summary:**\nDONE 2026-09-08. All five claims verified by reading android-36 framework sources on this machine, plus the Play policy page. No longer assumptions.\n\nMETHOD: read /opt/homebrew/share/android-commandlinetools/sources/android-36 — android/telecom/CallScreeningService.java, android/telecom/Call.java, android/provider/Telephony.java, android/provider/BlockedNumberContract.java, android/app/role/RoleManager.java. Same approach as the iOS side.\n\n1. CALLSCREENINGSERVICE — CONFIRMED, plus two limits not previously recorded.\nonScreenCall(Call.Details) runs at call time; Call.Details.getHandle() returns the tel: URI. CallResponse.Builder has setDisallowCall, setRejectCall, setSilenceCall, setSkipCallLog, setSkipNotification. Role ROLE_CALL_SCREENING (\"android.app.role.CALL_SCREENING\", documented as the \"call screening and caller id role\"); service guarded by BIND_SCREENING_SERVICE.\nThis combination delivers the intended product behaviour: a blocked call can show NOTHING (disallow + skipNotification + skipCallLog), and whether the user later sees blocked calls becomes a user setting. iOS offers no such control.\nNEW LIMIT A — FIVE SECONDS: \"must call respondToCall within 5 seconds of being bound ... the user's device will not begin ringing until the response is received (or the timeout is hit)\". Hard performance constraint on the core's evaluate(). Internal only, never user-visible.\nNEW LIMIT B — CONTACTS AND WITHHELD NUMBERS: \"only calls which are not in the user's contacts are passed for screening, unless the CallScreeningService has been granted READ_CONTACTS\". Calls with PRESENTATION_RESTRICTED, UNKNOWN, UNAVAILABLE or PAYPHONE \"are not provided to the CallScreeningService\". WITHHELD NUMBERS CANNOT BE BLOCKED ON ANDROID — users will expect this to work.\n(setSilenceCall is `public @NonNull Builder setSilenceCall(boolean)`; a grep for \"public Builder set\" misses it because of the annotation. It exists.)\n\n2. SMS BLOCKING REQUIRES THE DEFAULT SMS APP — ASSUMPTION CONFIRMED. The significant finding.\nTelephony.java verbatim: \"Only the default SMS app (selected by the user in system settings) is able to write to the SMS Provider ... and only the default SMS app receives the SMS_DELIVER_ACTION broadcast\". And: \"Other apps that are not selected as the default SMS app can only read the SMS Provider, but may also be notified ... by listening for the SMS_RECEIVED_ACTION broadcast, which is a NON-ABORTABLE broadcast\".\nNon-default apps observe; they cannot block. Becoming default requires SMS_DELIVER (BROADCAST_SMS), WAP_PUSH_DELIVER for MMS (BROADCAST_WAP_PUSH), an ACTION_SENDTO activity, and a RESPOND_VIA_MESSAGE service — a complete messaging app. Same line iOS draws with TelephonyMessagingKit, already out of scope.\nP012(F005) retitled \"SMS filtering — BLOCKED, needs a product decision\", with three options and a recommendation (ship iOS SMS only in release 1).\n\n3. NO SYSTEM SPAM LABEL ON ANDROID — corrects R3's earlier \"believed possible\" note.\nNo label, name or caller-id setter anywhere in CallScreeningService. Docs: \"If your app provides a caller ID experience, it should launch an activity to show the caller ID information from onScreenCall\". On Android a spam warning is our own overlay activity inside the 5-second window, not text on the system call screen. Different mechanism and different UX from iOS.\n\n4. PLAY POLICY — NOT A BLOCKER.\nsupport.google.com/googleplay/android-developer/answer/10208820: \"caller ID, spam detection, and/or spam blocking\" is a permitted EXCEPTION and does NOT require default-handler status. Eligible permissions include READ_SMS, RECEIVE_MMS, RECEIVE_SMS, RECEIVE_WAP_PUSH, SEND_SMS, READ_CALL_LOG, PROCESS_OUTGOING_CALLS. Needs a Permissions Declaration Form plus Google Play review and approval.\nThis does NOT rescue item 2: policy would grant RECEIVE_SMS without default-handler status, but the framework keeps the broadcast non-abortable. Observation only. The limit is technical, not policy.\n\n5. BLOCKEDNUMBERPROVIDER — UNUSABLE.\nBlockedNumberContract.java: \"Only the system, the default SMS application, and the default phone app ... and carrier apps ... can read, and write to the blockednumber provider.\" We are none. Stores exact numbers only (COLUMN_ORIGINAL_NUMBER, optional COLUMN_E164_NUMBER), so it could not carry range rules anyway. Rules go through CallScreeningService.\n\nWRITTEN BACK: F001 now carries the full verified Android block and no longer says NOT VERIFIED. P012(F005) retitled and rewritten with options and recommendation. R2 updated with the Android call findings, the 5-second limit, the contacts and withheld-number exclusions, the BlockedNumberProvider result, and a flag that its Android-SMS promise is now an open product decision. R3 corrected on the Android label mechanism.\n\nSTILL OPEN, needing the user rather than more research: which of P012's three SMS options to take. R2 and F005 need amending once that is decided, so they are left flagged rather than rewritten twice.\n\nREMAINING IN THIS PHASE: P001(F001)/T001, the iOS Call Directory entry limit. Unblocked — free-team extension signing was proven in T003 — but needs the iPhone, preferably on a cable rather than the current Wi-Fi pairing.",
+      "descriptionUpdatedAt": "2026-09-08T11:14:58.893Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "5258621c-d02c-4c00-bdfc-964902915162-check-001-planned-in-progress",
+          "date": "2026-09-08T11:07:48.725Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        },
+        {
+          "id": "5258621c-d02c-4c00-bdfc-964902915162-check-002-in-progress-done",
+          "date": "2026-09-08T11:14:58.891Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "DONE 2026-09-08. All five claims verified by reading android-36 framework sources on this machine, plus the Play policy page. No longer assumptions.\n\nMETHOD: read /opt/homebrew/share/android-commandlinetools/sources/android-36 — android/telecom/CallScreeningService.java, android/telecom/Call.java, android/provider/Telephony.java, android/provider/BlockedNumberContract.java, android/app/role/RoleManager.java. Same approach as the iOS side.\n\n1. CALLSCREENINGSERVICE — CONFIRMED, plus two limits not previously recorded.\nonScreenCall(Call.Details) runs at call time; Call.Details.getHandle() returns the tel: URI. CallResponse.Builder has setDisallowCall, setRejectCall, setSilenceCall, setSkipCallLog, setSkipNotification. Role ROLE_CALL_SCREENING (\"android.app.role.CALL_SCREENING\", documented as the \"call screening and caller id role\"); service guarded by BIND_SCREENING_SERVICE.\nThis combination delivers the intended product behaviour: a blocked call can show NOTHING (disallow + skipNotification + skipCallLog), and whether the user later sees blocked calls becomes a user setting. iOS offers no such control.\nNEW LIMIT A — FIVE SECONDS: \"must call respondToCall within 5 seconds of being bound ... the user's device will not begin ringing until the response is received (or the timeout is hit)\". Hard performance constraint on the core's evaluate(). Internal only, never user-visible.\nNEW LIMIT B — CONTACTS AND WITHHELD NUMBERS: \"only calls which are not in the user's contacts are passed for screening, unless the CallScreeningService has been granted READ_CONTACTS\". Calls with PRESENTATION_RESTRICTED, UNKNOWN, UNAVAILABLE or PAYPHONE \"are not provided to the CallScreeningService\". WITHHELD NUMBERS CANNOT BE BLOCKED ON ANDROID — users will expect this to work.\n(setSilenceCall is `public @NonNull Builder setSilenceCall(boolean)`; a grep for \"public Builder set\" misses it because of the annotation. It exists.)\n\n2. SMS BLOCKING REQUIRES THE DEFAULT SMS APP — ASSUMPTION CONFIRMED. The significant finding.\nTelephony.java verbatim: \"Only the default SMS app (selected by the user in system settings) is able to write to the SMS Provider ... and only the default SMS app receives the SMS_DELIVER_ACTION broadcast\". And: \"Other apps that are not selected as the default SMS app can only read the SMS Provider, but may also be notified ... by listening for the SMS_RECEIVED_ACTION broadcast, which is a NON-ABORTABLE broadcast\".\nNon-default apps observe; they cannot block. Becoming default requires SMS_DELIVER (BROADCAST_SMS), WAP_PUSH_DELIVER for MMS (BROADCAST_WAP_PUSH), an ACTION_SENDTO activity, and a RESPOND_VIA_MESSAGE service — a complete messaging app. Same line iOS draws with TelephonyMessagingKit, already out of scope.\nP012(F005) retitled \"SMS filtering — BLOCKED, needs a product decision\", with three options and a recommendation (ship iOS SMS only in release 1).\n\n3. NO SYSTEM SPAM LABEL ON ANDROID — corrects R3's earlier \"believed possible\" note.\nNo label, name or caller-id setter anywhere in CallScreeningService. Docs: \"If your app provides a caller ID experience, it should launch an activity to show the caller ID information from onScreenCall\". On Android a spam warning is our own overlay activity inside the 5-second window, not text on the system call screen. Different mechanism and different UX from iOS.\n\n4. PLAY POLICY — NOT A BLOCKER.\nsupport.google.com/googleplay/android-developer/answer/10208820: \"caller ID, spam detection, and/or spam blocking\" is a permitted EXCEPTION and does NOT require default-handler status. Eligible permissions include READ_SMS, RECEIVE_MMS, RECEIVE_SMS, RECEIVE_WAP_PUSH, SEND_SMS, READ_CALL_LOG, PROCESS_OUTGOING_CALLS. Needs a Permissions Declaration Form plus Google Play review and approval.\nThis does NOT rescue item 2: policy would grant RECEIVE_SMS without default-handler status, but the framework keeps the broadcast non-abortable. Observation only. The limit is technical, not policy.\n\n5. BLOCKEDNUMBERPROVIDER — UNUSABLE.\nBlockedNumberContract.java: \"Only the system, the default SMS application, and the default phone app ... and carrier apps ... can read, and write to the blockednumber provider.\" We are none. Stores exact numbers only (COLUMN_ORIGINAL_NUMBER, optional COLUMN_E164_NUMBER), so it could not carry range rules anyway. Rules go through CallScreeningService.\n\nWRITTEN BACK: F001 now carries the full verified Android block and no longer says NOT VERIFIED. P012(F005) retitled and rewritten with options and recommendation. R2 updated with the Android call findings, the 5-second limit, the contacts and withheld-number exclusions, the BlockedNumberProvider result, and a flag that its Android-SMS promise is now an open product decision. R3 corrected on the Android label mechanism.\n\nSTILL OPEN, needing the user rather than more research: which of P012's three SMS options to take. R2 and F005 need amending once that is decided, so they are left flagged rather than rewritten twice.\n\nREMAINING IN THIS PHASE: P001(F001)/T001, the iOS Call Directory entry limit. Unblocked — free-team extension signing was proven in T003 — but needs the iPhone, preferably on a cable rather than the current Wi-Fi pairing."
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "5258621c-d02c-4c00-bdfc-964902915162-check-001-install-android-sdk-and-confirm-framework-sources-are-readable",
+          "number": 1,
+          "title": "Install Android SDK and confirm framework sources are readable",
+          "checked": true
+        },
+        {
+          "id": "5258621c-d02c-4c00-bdfc-964902915162-check-002-verify-callscreeningservice-gives-the-number-at-call-time-and-can-reject-silence",
+          "number": 2,
+          "title": "Verify CallScreeningService gives the number at call time and can reject/silence",
+          "checked": true
+        },
+        {
+          "id": "5258621c-d02c-4c00-bdfc-964902915162-check-003-determine-whether-blocking-an-incoming-sms-requires-becoming-the-default-sms-app",
+          "number": 3,
+          "title": "Determine whether blocking an incoming SMS requires becoming the default SMS app",
+          "checked": true
+        },
+        {
+          "id": "5258621c-d02c-4c00-bdfc-964902915162-check-004-determine-whether-a-custom-spam-label-can-be-shown-on-the-incoming-call-screen-r3-depends-on-this",
+          "number": 4,
+          "title": "Determine whether a custom spam label can be shown on the incoming call screen (R3 depends on this)",
+          "checked": true
+        },
+        {
+          "id": "5258621c-d02c-4c00-bdfc-964902915162-check-005-confirm-current-play-store-policy-and-declaration-process-for-sms-call-log-permission-groups",
+          "number": 5,
+          "title": "Confirm current Play Store policy and declaration process for SMS/Call Log permission groups",
+          "checked": true
+        },
+        {
+          "id": "5258621c-d02c-4c00-bdfc-964902915162-check-006-check-blockednumberprovider-applicability-and-its-exact-number-only-limit",
+          "number": 6,
+          "title": "Check BlockedNumberProvider applicability and its exact-number-only limit",
+          "checked": true
+        },
+        {
+          "id": "5258621c-d02c-4c00-bdfc-964902915162-check-007-update-f001-r2-and-r3-with-verified-findings-keep-anything-unconfirmed-marked-unverified",
+          "number": 7,
+          "title": "Update F001, R2 and R3 with verified findings; keep anything unconfirmed marked unverified",
+          "checked": true
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-08T11:07:48.725Z",
+      "completedAt": "2026-09-08T11:14:58.891Z",
+      "createdAt": "2026-09-07T18:59:51.198Z",
+      "updatedAt": "2026-09-08T11:14:58.891Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+          "createdAt": "2026-09-08T11:07:48.706Z"
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-09-07T15:16:05.356Z",
+  "updatedAt": "2026-09-08T13:31:10.047Z",
+  "handoff": "",
+  "handoffUpdatedAt": "",
+  "handoffAudit": null,
+  "handoffReadAt": "",
+  "handoffHistory": [],
+  "statusLog": [
+    {
+      "id": "3f2f991b-77fa-4a28-b926-395239785c78",
+      "date": "2026-09-08T09:42:25.366Z",
+      "fromStatus": "draft",
+      "toStatus": "planned",
+      "title": "draft → planned",
+      "description": ""
+    },
+    {
+      "id": "a05b4928-26a4-4c2d-b22f-0d65fdbfdce4",
+      "date": "2026-09-08T11:07:48.735Z",
+      "fromStatus": "planned",
+      "toStatus": "in-progress",
+      "title": "planned → in-progress",
+      "description": ""
+    },
+    {
+      "id": "16387788-0e1f-4ce4-8715-b33ab798afea",
+      "date": "2026-09-08T13:31:10.054Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
+      "description": ""
+    }
+  ],
+  "sessionInfo": [
+    {
+      "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+      "createdAt": "2026-09-08T12:40:48.821Z"
+    }
+  ]
+}

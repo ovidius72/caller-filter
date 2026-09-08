@@ -1,0 +1,47 @@
+{
+  "id": "1c2e5d21-fcd8-47f6-b829-5e444de9e755",
+  "number": 7,
+  "shortId": "FC6GC",
+  "priority": 1,
+  "name": "Developer environment",
+  "description": "Get this machine able to build every target. Machine-level setup only — installing tools, not creating the project. The repository, project skeletons and CI are F008, deliberately separated because platform verification (F001) belongs between the two.\n\nWHY THE SPLIT: you need the tools before you can verify anything (F001's T002 cannot read Android framework sources with no Android SDK installed, and T001 cannot build a harness with no Rust or signing answer). But you want F001's ANSWERS before scaffolding the real projects — if blocking an SMS on Android turns out to require becoming the default SMS app, the Android project is a different shape. So: tools, then verify, then scaffold.\n\nCURRENT STATE OF THIS MACHINE, verified during design:\n- Xcode IS present at /Applications/Xcode.app; xcode-select -p returns its Developer dir; iOS SDK 26.2 confirmed and its CallKit and IdentityLookup headers were read directly to establish the platform constraints recorded across this plan.\n- Android SDK is ABSENT — no ~/Library/Android/sdk, no adb, no sdkmanager. This is what blocks F001/T002.\n- No Rust toolchain configured for this project.\n- The project directory is empty and not a git repository — but git init belongs to F008, not here.\n\nSCOPE: Android SDK; Rust plus all seven targets (three iOS, three Android, host); cargo-ndk and UniFFI tooling; and resolving the Apple signing question below.\n\nTHE APPLE QUESTION, resolved here before anyone writes code: there is no paid Developer account. Free personal-team provisioning runs apps on your own device with 7-day certificates, and App Groups require a paid account. UNKNOWN: whether a free personal team can build and run an APP EXTENSION on device at all. This decides whether F001/T001 can proceed. If it cannot, T001 is blocked on buying the account and that must be reported rather than worked around. Note the real iOS app (F004) will need an App Group regardless, to share rules between host and extensions — so a paid account is a hard prerequisite there, just not for the measurement.\n\nThis feature ends when every tool is installed and proven to run.",
+  "descriptionUpdatedAt": "2026-09-08T10:01:41.174Z",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "startDate": "",
+  "endDate": "",
+  "workDone": "",
+  "workRemaining": "",
+  "acceptedDecisions": [],
+  "phaseIds": [
+    "3e13c0ab-a05e-4a27-9a40-22a5c4a2de63"
+  ],
+  "dependsOn": [],
+  "statusLog": [
+    {
+      "id": "36cd4e7c-942d-4328-aacb-8f3cf6455324",
+      "date": "2026-09-08T10:09:41.941Z",
+      "fromStatus": "planned",
+      "toStatus": "in-progress",
+      "title": "planned → in-progress",
+      "description": ""
+    },
+    {
+      "id": "5a9a551c-601d-49d6-a425-2eef04333a23",
+      "date": "2026-09-08T11:06:06.019Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
+      "description": ""
+    }
+  ],
+  "createdAt": "2026-09-08T09:41:36.709Z",
+  "updatedAt": "2026-09-08T10:01:41.174Z",
+  "sessionInfo": [
+    {
+      "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+      "createdAt": "2026-09-08T10:09:41.904Z"
+    }
+  ]
+}

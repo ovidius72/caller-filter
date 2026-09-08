@@ -1,0 +1,73 @@
+{
+  "name": "Caller Filter",
+  "goal": "Let a user express any filtering rule they want, once, and have it mean the same thing on every platform — applied live where the OS permits, pre-expanded where it does not, and honestly reported where it cannot fit.",
+  "description": "A call and SMS filtering app for Android and iOS (Huawei possible later), built around user-authored filter rules rather than a fixed spam list.\n\nThe user writes rules — exact number, pattern, starts-with, ends-with, prefix, caller ID, or originating city/region — and the app applies them to incoming calls and messages. Where a platform cannot honour a rule, the app says so explicitly with the real number behind the limit.\n\nThe differentiator is that competitors ship a static spam list the user cannot edit. This ships user-authored rules, evaluated live where the OS allows it and pre-expanded into number lists where it does not, from one shared engine.",
+  "projectGuidelines": {
+    "content": "# Project Guidelines — Caller Filter\n\nCoding standards and working rules. What the product must *do* lives in the requirements; platform facts live on the features.\n\n## 1. Nothing country-specific in code\n\nNo country, country code, prefix, number length, area code, place name, carrier, or data source may be compiled into a source file. Everything that varies by country is data loaded at runtime.\n\nAdding a country means shipping its data. Adding a language means shipping its file. Neither is a code change and neither is a release.\n\nTells that this rule is being broken:\n- a country list, country code, or number length appears in a source file\n- the code branches on which country it is\n- a fixed set of number types is assumed — not every country defines every type\n- a threshold that should have been measured is written as a literal\n\n## 2. Store the rule, never the expansion\n\nA user's rule is persisted as the rule. The expanded list of exact numbers is a derived per-platform artifact, regenerated when the rule changes, when metadata updates, or when the measured limit changes.\n\nNever persist an expansion as if it were the rule. A metadata update would silently rot every rule, and the platform that never expands would drift from the one that does.\n\nCross-cutting: binds storage, sync, and both platform shells.\n\n## 3. Logic lives in the shared core\n\nFiltering logic goes in the Rust core, once. Platform shells stay thin — they adapt the core to an OS API and do no filtering of their own.\n\nAbout to write filtering logic in Swift or Kotlin? It belongs in the core instead.\n\n## 4. Measured, not assumed\n\nVerify against the SDK, the metadata, or a real device. Never promote an unverified claim to a decision — mark it unverified and say why.\n\nAny threshold that can be measured is measured, then held as configuration. Never a constant.\n\n## 5. Be brief\n\nShort sentences. Plain English. No jargon.\n\n- Answer first. Stop.\n- Don't explain what wasn't asked.\n- Don't restate what was just said.\n- No caveats or background unless they change what the reader does.\n- One question at a time, not a menu.\n- Report findings as facts, not stories about finding them.\n\nLong answers cost money and hide the point.",
+    "updatedAt": "2026-09-08T11:07:35.914Z",
+    "sessionInfo": [
+      {
+        "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+        "createdAt": "2026-09-08T11:07:42.300Z"
+      }
+    ]
+  },
+  "webPort": 0,
+  "scope": [
+    "RELEASE 1 — incoming CALL and SMS filtering on Android and iOS, shipped together in one release",
+    "RELEASE 1 — user-authored rules: deny and allow, by exact number, pattern, starts-with, ends-with, prefix, caller ID, originating city/region",
+    "RELEASE 1 — shared Rust filtering core exposed via UniFFI to Kotlin and Swift",
+    "RELEASE 1 — native UI per platform (SwiftUI, Jetpack Compose), simple and modern, free, no ads",
+    "RELEASE 1 — permission/extension enablement detection and recovery as a first-class screen",
+    "RELEASE 1 — quick block from a received call (Android only; impossible on iOS)",
+    "RELEASE 1 — multilanguage: UI text plus place names with defined fallback",
+    "RELEASE 1 — per-rule expansion-size and per-platform verdict shown in the UI, computed from libphonenumber data",
+    "RELEASE 1 — over-the-air metadata and geocoding data updates, independent of app releases",
+    "LATER — spam-caller list from an external service, refreshed daily, synced to the device",
+    "LATER — suspected-spam warning on incoming calls"
+  ],
+  "outOfScope": [
+    "iOS Live Caller ID Lookup / Keyword-PIR service — verified to unlock no rule type that on-device expansion does not already cover, while requiring a homomorphic-encryption service and a Privacy Pass token issuer",
+    "iOS 26 TelephonyMessagingKit default-messaging-app route — would give full SMS control but requires building a complete Messages replacement",
+    "HarmonyOS NEXT native shell — deferred; Rust core keeps the door open via Node-API, older Huawei EMUI devices run the Android build",
+    "Becoming the default phone or SMS app on either platform",
+    "Outgoing call handling"
+  ],
+  "decisions": [
+    "Shared Rust core with native UI per platform, chosen over Kotlin Multiplatform and over a cross-platform UI framework — the OS extensions are forced-native regardless, so the only shareable UI is a settings screen, and Rust's C ABI also reaches HarmonyOS",
+    "iOS calls are exact-number-only. Verified against SDK 26.2 headers: no app code runs at call time, CXCallDirectoryExtensionContext takes only ascending int64 entries, CXCall carries no number, LiveCommunicationKit's cellular API is outgoing-only (all 7 mentions of Cellular are outgoing), CTCallCenter is a deprecated stub. Becoming the EU default calling app does NOT grant incoming calls — Apple gave default messaging apps an incoming stream but deliberately did not do the same for calls",
+    "ONE RELEASE, NOT TWO. Calls and SMS ship together. Supersedes the earlier calls-only-first decision, which was reversed by the user. Rationale for reversal: the calls-only split gave iPhone its weak half first, since iPhone SMS runs all seven rule types live while iPhone calls are expansion-limited. No schedule pressure, so waiting on Google's SMS permission review is acceptable",
+    "NO EXTERNAL SPAM DATA IN RELEASE 1. The first release ships only the user's own filtering. This removes servers, data licensing and GDPR from the launch entirely, makes free genuinely free to run, gives the user's rules the whole iOS list with nothing competing for space, and ships only the differentiated half — competitors all sell spam lists, nobody sells user-authored rules",
+    "EXTERNAL SPAM DATA IS DEFERRED, NOT ABANDONED. Blocked on finding a licence that permits shipping the list inside a distributed app at a cost that works against a free product. Evidence: tellows sells €19.95/2yr (private use only) and €49.99/yr SME, whose terms state 'any sharing, publication, or external use of the contained data is strictly prohibited' and 'internal purposes' only, priced per phone-system channel — neither permits app redistribution; that needs an OEM deal, and tellows covers only 7 countries (DE, AT, CH, IT, ES, MX, UK). When it does land it must refresh DAILY",
+    "RULES-FIRST when the iOS list is tight: the user's own rules get the space and any external spam list fills only what is left. Moot for release 1, which has no external list, but stands as the standing priority rule for when external data lands",
+    "MOST SPECIFIC RULE WINS. A longer, more precise rule beats a broader one, so an allow on an exact number beats a deny on the range containing it without manual ordering. Ties between equally specific conflicting rules are surfaced to the user, never resolved silently",
+    "Location filtering and prefix filtering are the same operation — libphonenumber geocoding maps prefix to place — so they share one implementation. Location rules match landlines only, because mobile numbering is not geographic anywhere",
+    "The spam list, when it lands, must be synced to the device. A live per-call server lookup is impossible on iOS, so a centralized lookup could only ever augment Android and SMS",
+    "Data updates must never require an app release, per Project Guidelines §1. Metadata and geocoding data ship seeded in the bundle and update over the air, versioned, with the engine tolerating a metadata version it did not ship with"
+  ],
+  "globalRules": [],
+  "technologies": [
+    "Rust (shared filtering core)",
+    "UniFFI (Kotlin and Swift bindings)",
+    "SwiftUI (iOS UI)",
+    "Jetpack Compose (Android UI)",
+    "CallKit CXCallDirectoryProvider (iOS call blocking and labelling)",
+    "IdentityLookup ILMessageFilterExtension (iOS SMS filtering)",
+    "Android CallScreeningService (unverified)",
+    "Google libphonenumber metadata and geocoding data",
+    "phonenumber crate 0.3.10+9.0.33 (parse/validate/format; has no geocoder)"
+  ],
+  "tools": [],
+  "contentLanguage": "",
+  "chatLanguage": "",
+  "workflowRules": {
+    "beforePhaseStart": [],
+    "beforeTaskStart": [],
+    "afterPhaseComplete": []
+  },
+  "acceptedDecisions": [],
+  "nextFeatureNumber": 1,
+  "nextPhaseNumber": 1,
+  "nextTaskNumber": 1,
+  "workDeviations": []
+}

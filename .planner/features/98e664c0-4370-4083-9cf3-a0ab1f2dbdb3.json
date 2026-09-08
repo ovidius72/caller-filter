@@ -1,0 +1,27 @@
+{
+  "id": "98e664c0-4370-4083-9cf3-a0ab1f2dbdb3",
+  "number": 4,
+  "shortId": "S9XLT",
+  "priority": 6,
+  "name": "iOS app",
+  "description": "The iPhone app: two system extensions, the enablement flow, and the SwiftUI interface. Thin shell over F002 — per Guidelines §3 it adapts the core to Apple's APIs and does no filtering of its own.\n\nCURRENT STATE: nothing built. All Apple APIs below were verified by reading iOS SDK 26.2 headers on the dev machine, not from documentation.\n\nCALL DIRECTORY EXTENSION (CXCallDirectoryProvider): receives beginRequestWithExtensionContext:, asks F002 to expand the user's rules, and streams the result via addBlockingEntryWithNextSequentialPhoneNumber: — int64, STRICTLY ASCENDING or the request fails. Must stream under an autorelease pool rather than materialising the whole list, and must honour the entry limit measured in F001. Supports incremental updates (isIncremental, removeBlockingEntryWithPhoneNumber:, removeAllBlockingEntries), which is what data updates and rule edits should use rather than full reloads. completeRequestWithCompletionHandler: reports an `expired` flag when the run ran out of time.\n\nSMS FILTER EXTENSION (ILMessageFilterExtension): handleQueryRequest:context:completion: runs LIVE and carries sender, messageBody and receiverISOCountryCode, so all seven rule types work here by calling F002 directly — no expansion. Strongest verdict is ILMessageFilterActionJunk; it cannot delete or stop delivery. Unknown senders only. This is iPhone's strong surface and the reason SMS ships in release 1.\n\nENABLEMENT (R4): CXCallDirectoryManager getEnabledStatusForExtensionWithIdentifier: returns Unknown/Disabled/Enabled, and openSettingsWithCompletionHandler: (iOS 13.4+) deep-links to Settings. Must be re-checked at launch and on foreground, not once at onboarding — users switch it off later.\n\nUI (SwiftUI, R8): rule list and editor, per-rule expansion count and verdict from F002, enablement screen, localization (R7).\n\nTWO LIMITS THE UI MUST HANDLE HONESTLY, both verified absent from the SDK:\n- No call-history or recents API and no callback when a rule blocks a call. The app cannot know a call happened, so R6's one-tap block is impossible here and the user must type the number. Mitigations to design: clipboard detection on open, share-sheet entry if reachable, fast manual entry.\n- No control over blocked-call behaviour. The system rejects the call and never tells the app; there is nothing to configure.\n\nRules and expansions are shared with the extension via an App Group. The extension runs under tight memory limits, so the core must be callable without loading the whole dataset.",
+  "descriptionUpdatedAt": "2026-09-08T08:29:06.796Z",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "startDate": "",
+  "endDate": "",
+  "workDone": "",
+  "workRemaining": "",
+  "acceptedDecisions": [],
+  "phaseIds": [
+    "6aee6079-6b0b-48a6-adff-54442dae6456",
+    "84b6b5ca-853f-4f55-84cc-d6bef94edf84",
+    "ded9bd92-3be0-40da-bd1a-1ff821cf70fb"
+  ],
+  "dependsOn": [],
+  "statusLog": [],
+  "createdAt": "2026-09-08T08:29:06.786Z",
+  "updatedAt": "2026-09-08T10:02:48.707Z",
+  "sessionInfo": []
+}

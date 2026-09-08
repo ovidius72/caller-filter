@@ -1,0 +1,14 @@
+[package]
+name = "callerfilter-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Shared call and SMS filtering engine. All filtering logic lives here."
+
+[lib]
+# rlib for host tests; cdylib for the Android JNI and iOS static/dynamic linking.
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+phonenumber = { workspace = true }

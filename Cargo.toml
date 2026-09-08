@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.90"
+license = "UNLICENSED"
+
+[workspace.dependencies]
+phonenumber = "0.3"
+
+[profile.release]
+# The iOS Call Directory and SMS filter extensions run under tight memory
+# limits, so the core's size matters more than in an ordinary app.
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

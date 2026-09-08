@@ -1,0 +1,47 @@
+{
+  "id": "c2200077-ec99-4c5b-8bd8-cc9e8d8e4834",
+  "number": 1,
+  "shortId": "Z4SF5",
+  "priority": 2,
+  "name": "Platform verification and measurement",
+  "description": "Establish the facts the rest of the plan depends on. Produces knowledge, not shipped code. Gates design in F002-F005.\n\nBOTH UNKNOWNS ARE NOW ANSWERED. T002 (Android) and T001 (iOS limit) both done 2026-09-08.\n\nMEASURED — THE iOS CALL DIRECTORY LIMIT (T001, iPhone 13 / iPhone14,5, iOS 26.6.1):\nBlocking entries: 1,000 OK 0.05s | 1,000,000 OK 7.56s | 1,500,000 OK 9.40s | 1,750,000 OK 13.0s | 1,900,000 OK 12.1s | 2,000,000 FAIL code 5 | 5,000,000 FAIL code 5.\nIdentification entries (number + label): 1,900,000 OK 47.58s — about 4x the time of blocking entries for the same count.\nHARD CAP is between 1.9M and 2M. The design's earlier assumption of ~1,000,000, taken from a competitor's marketing page, was WRONG and too low.\nDEFAULT TARGET 1,500,000, agreed with the user: comfortably under the cap, 9.4s, headroom for untested devices.\nTHE NUMBER MUST NOT BE HARDCODED. Error 5 (MaximumEntriesExceeded) is a clean catchable signal, so the app expands, attempts the load, and backs off on error 5. The measurement is the starting estimate and the basis for warning the user early — not a rule. Whether the cap varies by device or iOS version is UNTESTED (one device only); the clean error rather than a crash suggests a fixed OS cap, but the runtime backoff is what makes that safe.\nUNTESTED: whether blocking and identification entries share one cap. Each passed alone at 1.9M; no combined run. Low urgency — R1 and R3 are deferred and release 1 emits no identification entries.\n\nVERIFIED — iOS (SDK 26.2 headers, this machine):\n- iOS calls never run app code at call time. CXCallDirectoryProvider.beginRequestWithExtensionContext: is a batch load; CXCallDirectoryExtensionContext offers only addBlockingEntryWithNextSequentialPhoneNumber: and addIdentificationEntryWithNextSequentialPhoneNumber:label:, int64, strictly ascending; CXCall carries no number; CTCallCenter is a deprecated stub; LiveCommunicationKit's cellular API is outgoing-only.\n- iOS SMS runs live: ILMessageFilterQueryHandling carries sender, messageBody, receiverISOCountryCode. Verdict caps at Junk.\n- No call-history API and no blocked-call callback, so R6 is impossible on iOS.\n- A FREE personal team CAN sign AND RUN app extensions on device. Proven end to end (team UY66NT5LGF). Profiles expire in 7 days. A paid account is still required for F004 because App Groups need one.\n\nVERIFIED — Android (sources/android-36, this machine):\n- CallScreeningService.onScreenCall(Call.Details) runs at call time; getHandle() gives the tel: URI. CallResponse.Builder: setDisallowCall, setRejectCall, setSilenceCall, setSkipCallLog, setSkipNotification — so a blocked call can show nothing at all, and \"show blocked calls or not\" becomes a user setting. Role ROLE_CALL_SCREENING; service guarded by BIND_SCREENING_SERVICE.\n- FIVE SECOND LIMIT: respondToCall must return within 5s of binding and the phone does not ring until it does. Hard constraint on the core's evaluate().\n- CONTACTS EXEMPT BY DEFAULT unless the app holds READ_CONTACTS.\n- WITHHELD NUMBERS NEVER REACH THE SERVICE (PRESENTATION_RESTRICTED / UNKNOWN / UNAVAILABLE / PAYPHONE). Cannot be blocked.\n- SMS BLOCKING REQUIRES THE DEFAULT SMS APP. Non-default apps get a non-abortable broadcast — observe only. Android SMS is therefore dropped from release 1; see P012(F005) and idea I001.\n- NO SYSTEM SPAM LABEL. Android's caller-ID route is our own overlay activity, not text on the system call screen.\n- BlockedNumberProvider unusable: system, default SMS app, default dialer and carrier apps only; exact numbers only.\n- PLAY POLICY: caller ID / spam blocking is a permitted exception, no default-handler status needed, but requires a Permissions Declaration Form and review. Moot for release 1 now that Android SMS is out.\n\nFOUR BUILD TRAPS FOUND IN T001, all likely to recur in F004:\n1. Xcode 26 Debug builds put extension code in a separate __preview.dylib, so the principal class is missing from the appex and enabling fails. Build Release or set ENABLE_DEBUG_DYLIB=NO.\n2. xcodegen's info.path generates a plist and silently drops a hand-written NSExtension dictionary; use info.properties.\n3. Incremental requests cause duplicate inserts (sqlite error 19) if you re-add stored numbers. Honour context.isIncremental.\n4. Error 7 (CurrentlyLoading) is common after install and during long loads. Retry with a delay.\n\nDEVICE PREREQUISITES: Developer Mode on, developer certificate trusted, and the extension switched on manually in Settings. Until that last step reloadExtension returns error 6 (ExtensionDisabled) — exactly the R4 problem the real app must handle.\n\nDATA: libphonenumber covers 245 territories and 151 countries x 34 languages of geocoding. Measured: 226/244 countries need <=4 digits pinned for mobile, 223/245 for landline.",
+  "descriptionUpdatedAt": "2026-09-08T13:30:46.593Z",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "startDate": "",
+  "endDate": "",
+  "workDone": "",
+  "workRemaining": "",
+  "acceptedDecisions": [],
+  "phaseIds": [
+    "58c68ee1-a4e2-44d4-a3c4-e5844109c21a"
+  ],
+  "dependsOn": [],
+  "statusLog": [
+    {
+      "id": "4fa16c09-907e-4a75-920a-5c7b536e26aa",
+      "date": "2026-09-08T11:07:48.742Z",
+      "fromStatus": "planned",
+      "toStatus": "in-progress",
+      "title": "planned → in-progress",
+      "description": ""
+    },
+    {
+      "id": "9b6197ec-2459-487f-adb8-048ca7fadd2a",
+      "date": "2026-09-08T13:31:10.068Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
+      "description": ""
+    }
+  ],
+  "createdAt": "2026-09-07T15:15:49.320Z",
+  "updatedAt": "2026-09-08T13:30:46.593Z",
+  "sessionInfo": [
+    {
+      "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+      "createdAt": "2026-09-08T12:40:48.821Z"
+    }
+  ]
+}

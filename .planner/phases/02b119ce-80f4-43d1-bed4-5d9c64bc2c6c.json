@@ -1,0 +1,300 @@
+{
+  "id": "02b119ce-80f4-43d1-bed4-5d9c64bc2c6c",
+  "featureId": "75b492b5-62c2-4db6-bf89-819297d1adc5",
+  "number": 18,
+  "shortId": "5C34D",
+  "priority": 1,
+  "slug": "repository-project-skeletons-and-ci",
+  "title": "Repository, project skeletons and CI",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "summary": "git init, three projects, generated bindings, a build that runs itself",
+  "description": "CURRENT STATE: /Users/antonio/projects/caller-filter is EMPTY and NOT a git repository. `git init` happens in this phase. Depends on F007 (tools installed) and follows F001 (platform facts established).\n\nReplaces the phase originally placed in F006 (store distribution), which was the wrong home — setting up a project and shipping it to stores are different jobs.\n\nREPOSITORY LAYOUT — the decision this phase must make. One repo holding the Rust core plus both apps, or separate repos. Not cosmetic: it determines how UniFFI bindings and packaged datasets flow from the core to the two apps. One repo keeps them in step and makes CI simple; separate repos need a publishing step and let the apps sit on a stale core silently.\n\nPROJECT SKELETONS:\n- Rust core crate, buildable and testable on the HOST from day one. F002 is pure logic with no platform dependency, so its tests must run with no device or simulator — that is the fast feedback loop and it should stay fast.\n- Xcode project with THREE targets: host app, Call Directory extension (P008), SMS filter extension (P009). Both extensions link the same core and run under tight memory limits.\n- Android Gradle project linking the same core through JNI via cargo-ndk.\n\nPROVE IT END TO END: a trivial core function called successfully from Swift AND from Kotlin. That one call validates the toolchain, all seven targets, the linking and the binding generation together — and it should pass before any real core work starts in F002.\n\nCI: build the core per target, run core tests on the host, generate bindings, build both apps, run F003's dataset converter and FAIL THE BUILD on validation errors. A silently truncated dataset makes rules stop matching with no error anywhere, which is close to undebuggable in the field. Explicitly NOT automated: F001/T001's measurement harness needs real hardware and human observation.\n\nCONVENTIONS: formatting, linting, test layout, dependency policy — including how upstream libphonenumber data updates are pulled in, since that data is an input to F003's converter and not a checked-in artifact.\n\nBEHAVIOURS TO PRESERVE: generated bindings and packaged datasets are build outputs, never committed. Track the core's binary size per target, since an oversized core makes the iOS extensions unviable regardless of correctness.",
+  "descriptionUpdatedAt": "2026-09-08T10:02:05.020Z",
+  "notes": "",
+  "goals": [],
+  "nonGoals": [],
+  "dependencies": [],
+  "dependsOn": [],
+  "risks": [],
+  "openQuestions": [],
+  "decisions": [],
+  "acceptedDecisions": [],
+  "completionCriteria": [],
+  "taskIds": [
+    "835f92a3-0c5a-4907-9c93-7ef310771716",
+    "3f7d89d1-d111-4b36-8af7-56ea31fec687",
+    "381feef4-f303-49fb-b02a-02dfa21c90e8"
+  ],
+  "tasks": [
+    {
+      "id": "835f92a3-0c5a-4907-9c93-7ef310771716",
+      "phaseId": "02b119ce-80f4-43d1-bed4-5d9c64bc2c6c",
+      "number": 7,
+      "shortId": "9CE84",
+      "priority": 1,
+      "shortName": "create-the-repository-and-deci",
+      "title": "Create the repository and decide its layout",
+      "status": "in-progress",
+      "description": "First code-bearing action in the project. Depends on F007 (tools installed) and follows F001 (verification done).\n\nCURRENT STATE: /Users/antonio/projects/caller-filter is EMPTY and is NOT a git repository. `git init` happens here.\n\nTHE DECISION THIS TASK EXISTS TO MAKE — repository layout. One repo holding the Rust core plus both apps, or separate repos. It is not cosmetic: it determines how UniFFI bindings and packaged datasets flow from the core to the two apps.\n- One repo: core and apps always in step, CI is simple, a core change and its binding regeneration land in one commit. Downside: iOS and Android developers carry the whole tree.\n- Separate repos: needs a publishing step for the core artifact, and the apps can silently sit on a stale core.\nRECOMMENDATION: one repo. The core is small, the apps are thin shells over it, and Guidelines §3 puts all logic in the core — so the core changes far more often than the shells, and keeping them in lockstep is the common case rather than the exception.\n\nWORK:\n- git init, .gitignore covering Rust target/, Xcode build products and user state, Gradle build output, and — importantly — GENERATED UNIFFI BINDINGS and PACKAGED DATASETS. Both are build outputs. Checked-in bindings drift from the core silently and only fail at runtime on one platform; a checked-in dataset defeats R5's versioning.\n- Directory layout reflecting the decision above.\n- Cargo workspace for the core crate, building and testing on the host.\n- README recording the layout decision and its reasoning, so the next person does not relitigate it.\n\nDO NOT: create the Xcode or Android project skeletons here, and do not set up CI. Those are separate tasks in this phase. This task ends with a repository holding a Rust core that builds and tests on the host.\n\nEDGE CASE: the directory already exists and is empty — git init in place, do not create a nested directory.",
+      "descriptionUpdatedAt": "2026-09-08T10:02:16.795Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-001-planned-in-progress",
+          "date": "2026-09-08T13:50:54.015Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-001-decide-repository-layout-one-repo-vs-separate-record-the-decision-and-reasoning-in-the-readme",
+          "number": 1,
+          "title": "Decide repository layout: one repo vs separate; record the decision and reasoning in the README",
+          "checked": false
+        },
+        {
+          "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-002-git-init-in-the-existing-empty-directory-do-not-nest",
+          "number": 2,
+          "title": "git init in the existing empty directory (do not nest)",
+          "checked": false
+        },
+        {
+          "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-003-write-gitignore-rust-target-xcode-build-products-and-user-state-gradle-output",
+          "number": 3,
+          "title": "Write .gitignore: Rust target/, Xcode build products and user state, Gradle output",
+          "checked": false
+        },
+        {
+          "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-004-ensure-gitignore-excludes-generated-uniffi-bindings-and-packaged-datasets-both-are-build-outputs",
+          "number": 4,
+          "title": "Ensure .gitignore excludes generated UniFFI bindings and packaged datasets — both are build outputs",
+          "checked": false
+        },
+        {
+          "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-005-create-the-cargo-workspace-and-the-core-crate-skeleton",
+          "number": 5,
+          "title": "Create the Cargo workspace and the core crate skeleton",
+          "checked": false
+        },
+        {
+          "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-006-verify-the-core-builds-and-its-tests-run-on-the-host-with-no-device-or-simulator",
+          "number": 6,
+          "title": "Verify the core builds and its tests run on the host with no device or simulator",
+          "checked": false
+        },
+        {
+          "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-007-first-commit",
+          "number": 7,
+          "title": "First commit",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-08T13:50:54.015Z",
+      "completedAt": "",
+      "createdAt": "2026-09-08T10:02:16.787Z",
+      "updatedAt": "2026-09-08T13:50:54.015Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+          "createdAt": "2026-09-08T13:50:53.987Z"
+        }
+      ]
+    },
+    {
+      "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687",
+      "phaseId": "02b119ce-80f4-43d1-bed4-5d9c64bc2c6c",
+      "number": 8,
+      "shortId": "83TBH",
+      "priority": 2,
+      "shortName": "xcode-and-android-project-skel",
+      "title": "Xcode and Android project skeletons linking the core",
+      "status": "planned",
+      "description": "Stand up both app projects so they compile against the Rust core through UniFFI. Depends on the repository task, and on F001/T002 having established what shape the Android app actually needs to be.\n\nCURRENT STATE: nothing exists. Xcode with iOS SDK 26.2 is present; the Android SDK arrives with F007.\n\nXCODE PROJECT — THREE TARGETS, not one:\n- Host app (SwiftUI).\n- Call Directory extension (CXCallDirectoryProvider) — see P008(F004).\n- SMS filter extension (ILMessageFilterExtension) — see P009(F004).\nBoth extensions link the same core. They run under tight memory limits, so treat the core's binary size and load cost as a build output watched from the first day rather than something discovered when an extension gets killed in the field.\n\nSIGNING, CURRENT CONSTRAINT: no paid Apple Developer account. Free personal-team provisioning, 7-day certificates, own devices only, NO App Groups. Set the skeleton up so it builds under those limits. The real app WILL need an App Group to share rules between host and extensions (R2, R4), so a paid account is a hard prerequisite before F004 is functional. If F007 found that free teams cannot run extensions at all, stop and report.\n\nANDROID PROJECT: Gradle project linking the same core through JNI, with cargo-ndk producing the per-ABI libraries. CHECK F001/T002'S FINDING FIRST — if blocking an SMS requires becoming the default SMS app, the Android app is a materially different shape and that is a product decision, not something to work around while scaffolding.\n\nUNIFFI BINDINGS ARE GENERATED BY THE BUILD, NEVER COMMITTED. The single most important convention here. Checked-in bindings drift from the core in silence and surface as a runtime failure on one platform only. Wire generation into both builds now, while the projects are empty and it is easy.\n\nPROVE IT WORKS END TO END: a trivial core function called successfully from Swift and from Kotlin. That one call validates the toolchain, all seven targets, the linking and the binding generation together. Do this before any real core work in F002.\n\nDO NOT: implement filtering logic here — that is F002, and Guidelines §3 keeps it in the core regardless.",
+      "descriptionUpdatedAt": "2026-09-08T10:02:27.055Z",
+      "notes": "",
+      "statusLog": [],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-001-check-f001-t002-s-android-sms-finding-before-scaffolding-the-android-project",
+          "number": 1,
+          "title": "Check F001/T002's Android SMS finding before scaffolding the Android project",
+          "checked": false
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-002-create-xcode-project-with-three-targets-host-app-call-directory-extension-sms-filter-extension",
+          "number": 2,
+          "title": "Create Xcode project with three targets: host app, Call Directory extension, SMS filter extension",
+          "checked": false
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-003-configure-free-personal-team-signing-with-no-app-group-stop-and-report-if-extensions-need-a-paid-account",
+          "number": 3,
+          "title": "Configure free personal-team signing with no App Group; stop and report if extensions need a paid account",
+          "checked": false
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-004-create-the-gradle-android-project",
+          "number": 4,
+          "title": "Create the Gradle Android project",
+          "checked": false
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-005-wire-cargo-ndk-to-produce-per-abi-core-libraries",
+          "number": 5,
+          "title": "Wire cargo-ndk to produce per-ABI core libraries",
+          "checked": false
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-006-wire-uniffi-binding-generation-into-both-builds-never-commit-the-output",
+          "number": 6,
+          "title": "Wire UniFFI binding generation into BOTH builds; never commit the output",
+          "checked": false
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-007-call-a-trivial-core-function-from-swift-and-confirm-it-works",
+          "number": 7,
+          "title": "Call a trivial core function from Swift and confirm it works",
+          "checked": false
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-008-call-the-same-core-function-from-kotlin-and-confirm-it-works",
+          "number": 8,
+          "title": "Call the same core function from Kotlin and confirm it works",
+          "checked": false
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-009-record-the-core-s-binary-size-and-load-cost-as-a-tracked-build-output",
+          "number": 9,
+          "title": "Record the core's binary size and load cost as a tracked build output",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "",
+      "completedAt": "",
+      "createdAt": "2026-09-08T10:02:27.044Z",
+      "updatedAt": "2026-09-08T10:02:27.044Z",
+      "sessionInfo": []
+    },
+    {
+      "id": "381feef4-f303-49fb-b02a-02dfa21c90e8",
+      "phaseId": "02b119ce-80f4-43d1-bed4-5d9c64bc2c6c",
+      "number": 9,
+      "shortId": "ZPKC8",
+      "priority": 3,
+      "shortName": "ci-and-shared-conventions",
+      "title": "CI and shared conventions",
+      "status": "planned",
+      "description": "Make the build run itself, and settle the conventions once so they are not argued per pull request. Depends on the project skeletons task.\n\nCI SHAPE:\n- Build the Rust core for every target: three iOS, three Android, plus host.\n- Run the core's tests on the HOST. F002 is pure logic with no platform dependency, so its tests need no device or simulator — this is the fast feedback loop and it should stay fast.\n- Generate UniFFI bindings (never committed — see the skeletons task).\n- Build both apps.\n- Run F003's dataset converter and FAIL THE BUILD on its validation errors. A silently truncated dataset makes rules stop matching with no error anywhere in the system, which is close to undebuggable in the field.\n\nEXPLICITLY NOT AUTOMATED: F001/T001's measurement harness needs a real iPhone and human observation of memory and kill behaviour. Do not try to run it in CI.\n\nSHARED CONVENTIONS, agreed here and written down:\n- Formatting and linting for Rust, Swift and Kotlin.\n- Test layout and naming. Note where the weight belongs: P002(F002) says the rule model carries the heaviest coverage in the project, because a bug there is a bug on every platform simultaneously.\n- Dependency policy, including how libphonenumber upstream data updates are pulled in — that data is an input to F003's converter, not a checked-in artifact.\n\nA CONVENTION WORTH ENFORCING MECHANICALLY: Project Guidelines §1 forbids country codes, number lengths, prefixes and place names in source files. That is checkable — a lint or test that greps for suspicious literals in the core would catch the most likely violation of the project's central rule. Consider adding it rather than trusting review.\n\nALSO: track the core's binary size per target as a CI output. The iOS extensions run under tight memory limits and an oversized core makes them unviable regardless of correctness.",
+      "descriptionUpdatedAt": "2026-09-08T10:02:38.906Z",
+      "notes": "",
+      "statusLog": [],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-001-ci-builds-the-core-for-all-seven-targets-3-ios-3-android-host",
+          "number": 1,
+          "title": "CI builds the core for all seven targets (3 iOS, 3 Android, host)",
+          "checked": false
+        },
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-002-ci-runs-core-tests-on-the-host-no-device-or-simulator-needed",
+          "number": 2,
+          "title": "CI runs core tests on the host — no device or simulator needed",
+          "checked": false
+        },
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-003-ci-generates-uniffi-bindings-during-the-build",
+          "number": 3,
+          "title": "CI generates UniFFI bindings during the build",
+          "checked": false
+        },
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-004-ci-runs-the-dataset-converter-and-fails-the-build-on-validation-errors",
+          "number": 4,
+          "title": "CI runs the dataset converter and fails the build on validation errors",
+          "checked": false
+        },
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-005-set-up-formatting-and-linting-for-rust-swift-and-kotlin",
+          "number": 5,
+          "title": "Set up formatting and linting for Rust, Swift and Kotlin",
+          "checked": false
+        },
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-006-agree-and-document-test-layout-naming-and-dependency-policy",
+          "number": 6,
+          "title": "Agree and document test layout, naming, and dependency policy",
+          "checked": false
+        },
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-007-consider-a-lint-that-catches-hardcoded-country-codes-lengths-or-place-names-in-the-core-guidelines-1",
+          "number": 7,
+          "title": "Consider a lint that catches hardcoded country codes, lengths or place names in the core (Guidelines §1)",
+          "checked": false
+        },
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-008-track-core-binary-size-per-target-as-a-ci-output",
+          "number": 8,
+          "title": "Track core binary size per target as a CI output",
+          "checked": false
+        },
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-009-confirm-the-t001-measurement-harness-is-excluded-from-ci-it-needs-real-hardware",
+          "number": 9,
+          "title": "Confirm the T001 measurement harness is excluded from CI — it needs real hardware",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "",
+      "completedAt": "",
+      "createdAt": "2026-09-08T10:02:38.895Z",
+      "updatedAt": "2026-09-08T10:02:38.895Z",
+      "sessionInfo": []
+    }
+  ],
+  "createdAt": "2026-09-08T10:02:05.009Z",
+  "updatedAt": "2026-09-08T13:50:54.015Z",
+  "handoff": "",
+  "handoffUpdatedAt": "",
+  "handoffAudit": null,
+  "handoffReadAt": "",
+  "handoffHistory": [],
+  "statusLog": [
+    {
+      "id": "140a27ab-0a81-45d3-b864-a38c9144088c",
+      "date": "2026-09-08T13:50:54.021Z",
+      "fromStatus": "draft",
+      "toStatus": "in-progress",
+      "title": "draft → in-progress",
+      "description": ""
+    }
+  ],
+  "sessionInfo": [
+    {
+      "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+      "createdAt": "2026-09-08T13:50:53.987Z"
+    }
+  ]
+}

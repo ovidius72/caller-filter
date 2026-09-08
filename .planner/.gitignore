@@ -1,0 +1,5 @@
+# Agent Plan transient/derived/session-local files — do not track
+.local/
+*.bak
+*.tmp.*
+generated/

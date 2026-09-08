@@ -1,0 +1,26 @@
+{
+  "id": "66df555b-d614-4e4b-b1ff-c2fb24cc4451",
+  "number": 3,
+  "shortId": "VLEZZ",
+  "priority": 5,
+  "name": "Number data: packaging, versioning and over-the-air updates",
+  "description": "Everything the engine knows about countries, numbers, places and languages, delivered as versioned data that updates without an app release. Serves R5 and the data half of R7.\n\nCURRENT STATE: nothing built. Source data identified and inspected: Google libphonenumber PhoneNumberMetadata.xml (245 territories, ~979 KB raw XML) and resources/geocoding (151 countries × 34 languages, 11 MB total, 6.6 MB for English alone).\n\nWHY THIS IS A FEATURE AND NOT A DETAIL: Project Guidelines §1 promises that adding a country or a language is neither a code change nor a release. That is only true if data ships outside app review. It is an architectural property of how the engine loads everything, so retrofitting it later means reworking F002's foundations. It also has no servers beyond static hosting, so it does not compromise the free-with-no-ads position in R8.\n\nWHAT IT MUST DO:\n- Convert libphonenumber XML and geocoding text files into a compact on-device format. Raw XML parsing per lookup is not viable in an iOS extension under memory pressure.\n- Ship seed data in the app bundle so a fresh install filters offline immediately, with no first-run download.\n- Fetch versioned updates over the air and swap them ATOMICALLY. A half-applied dataset must never be visible to the evaluator or rules silently evaluate against inconsistent data.\n- Let the engine run against a dataset version it was not compiled against — so no code may assume a fixed set of countries, number types, or fields. Note not every country defines every type (uan 63, voicemail 15 of 245).\n- Expose the active data version in the app and in diagnostics, because \"why did this rule stop matching\" is otherwise unanswerable.\n- Ship only the countries and languages needed rather than all 11 MB, since we control packaging.\n\nTHE HARD PART — UPDATES CHANGE MEANING: a metadata update can change what an existing rule expands to, via new valid lengths, a changed national pattern, or a reassigned geographic prefix. So an update must trigger re-expansion and, on iOS, a Call Directory reload (CXCallDirectoryManager reloadExtensionWithIdentifier:). Per R2's honesty requirement the user must be told when a rule's meaning or per-platform verdict changed. This is precisely why Guidelines §2 forbids storing expansions as rules.\n\nBUILD IT GENERAL: a versioned-dataset channel, not a phone-metadata channel. R1's daily-refreshed spam list rides the same pipe when a workable licence exists. That generality is why R1 can be deferred at no cost.",
+  "descriptionUpdatedAt": "2026-09-08T08:28:54.551Z",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "startDate": "",
+  "endDate": "",
+  "workDone": "",
+  "workRemaining": "",
+  "acceptedDecisions": [],
+  "phaseIds": [
+    "b85eacfe-d3f7-4382-afad-004a97bdadcf",
+    "896fb909-24f2-486f-857e-43ce5231036d"
+  ],
+  "dependsOn": [],
+  "statusLog": [],
+  "createdAt": "2026-09-08T08:28:54.545Z",
+  "updatedAt": "2026-09-08T10:02:48.124Z",
+  "sessionInfo": []
+}

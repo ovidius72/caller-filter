@@ -1,0 +1,354 @@
+{
+  "requirements": [
+    {
+      "id": "7583f952-fd74-4c1a-aefe-3d0d30de322a",
+      "title": "R1 — Spam-caller list from an external service, refreshed daily [LATER — deferred, not abandoned]",
+      "description": "DEFERRED, NOT ABANDONED. Not in release 1. Blocked on one thing only: finding a licence that permits shipping the list inside a distributed app, at a cost that works against a free product with no ads. The feature is wanted; the sustainable source does not yet exist.\n\nDAILY REFRESH IS A REQUIREMENT, not a detail. The app checks the source once a day and updates the on-device list, so protection is current without the user doing anything. The service itself is chosen later.\n\nWHY IT IS NOT IN RELEASE 1: excluding it removes servers, data licensing and GDPR from the launch entirely, makes \"free with no ads\" genuinely free to run, and leaves the user's own rules the whole iOS list with nothing competing for space.\n\nLICENSING EVIDENCE GATHERED (2026-09-08) — this is the blocker, with numbers:\n- tellows private key: EUR 19.95 / 2 years, terms say \"solely used for private purposes\". Unusable for a product.\n- tellows commercial (SME) key: EUR 49.99 / 1 year incl. VAT, but terms state \"Any sharing, publication, or external use of the contained data is strictly prohibited\" and it \"may only be used by small and medium-sized enterprises for internal purposes\". Priced per phone-system channel (1-6, 7-10, 11-30) — it is a licence for a company protecting its own switchboard, not for a product. Shipping the list on thousands of phones is sharing, publication AND external use.\n- tellows coverage: 7 countries only (DE, AT, CH, IT, ES, MX, UK). Fine as a supplement, cannot be a backbone for a product that must work everywhere.\n- The shape needed is tellows' Scorelist API (bulk CSV, refreshed several times a day), NOT their Live API — because iOS cannot query a server during a call. Per-query APIs are useless to us on iOS at any price.\n- Expect the same pattern from Hiya, Truecaller, RoboKiller and similar: they sell lookups or internal use and forbid embedding. What is actually needed is an OEM/redistribution deal, negotiated, typically priced per user or as revenue share.\n\nFREE ALTERNATIVES THAT FIT THE SHAPE (bulk download, embeddable):\n- National regulator publications, e.g. Germany's Bundesnetzagentur publishes numbers under dialling bans. Free, authoritative, bulk, no licence problem, and fits the per-country data model already in the plan. Narrow coverage.\n- PhoneBlock (phoneblock.net) — free and open source, community-reported, downloadable in several formats, already supports Android and iOS. Software is GPL-3.0; website content is CC BY-NC-SA 4.0 and it is UNCLEAR whether the number data falls under that. If it does, non-commercial is survivable while free but blocks monetisation, and share-alike may have consequences. Coverage looks German-centred (FRITZ!Box focus). Needs checking against their GitHub, not their homepage.\n- The app's own users' reports. Free and unrestricted, but empty on day one and brings the GDPR question.\n\nFORCED ARCHITECTURE (unchanged): this cannot be a live per-call server lookup. On iOS no app code runs when a carrier call arrives (verified against CallKit headers in SDK 26.2). The only per-call server path is LiveCallerIDLookup, which needs a Keyword-PIR service with homomorphic encryption and is still keyed by exact number. So the list MUST be synced to the device. A centralized lookup could only ever augment Android and SMS.\n\nWHEN IT LANDS: the rules-first decision applies — the user's own rules get the iOS list first, this fills what is left, trimmed to highest-confidence entries. It rides R5's versioned-dataset channel, which is built general in release 1 precisely so this needs no rework.\n\nSources must be data-driven per Project Guidelines §1 — no source, country or list compiled into code.\n\nOPEN — GDPR: a list built from users' own call logs makes phone numbers personal data under EU law. Legal basis, minimization and retention must be settled before any client-side reporting ships.",
+      "status": "deferred",
+      "macroTasks": [
+        {
+          "id": "MT-004",
+          "title": "Find a source whose licence permits shipping the list inside a distributed free app",
+          "description": "",
+          "status": "blocked",
+          "createdAt": "2026-09-08T08:23:33.735Z",
+          "updatedAt": "2026-09-08T08:23:33.735Z"
+        },
+        {
+          "id": "MT-005",
+          "title": "Check PhoneBlock's actual data licence and country coverage on GitHub",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T08:23:33.735Z",
+          "updatedAt": "2026-09-08T08:23:33.735Z"
+        },
+        {
+          "id": "MT-006",
+          "title": "Evaluate national regulator lists as a free, per-country base layer",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T08:23:33.735Z",
+          "updatedAt": "2026-09-08T08:23:33.735Z"
+        },
+        {
+          "id": "MT-007",
+          "title": "Daily refresh over R5's versioned-dataset channel, with incremental deltas (CallKit isIncremental / removeBlockingEntryWithPhoneNumber:)",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T08:23:33.735Z",
+          "updatedAt": "2026-09-08T08:23:33.735Z"
+        },
+        {
+          "id": "MT-008",
+          "title": "Settle GDPR position for any user-reported number data",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T08:23:33.735Z",
+          "updatedAt": "2026-09-08T08:23:33.735Z"
+        }
+      ],
+      "linkedPhaseIds": [
+        "896fb909-24f2-486f-857e-43ce5231036d"
+      ],
+      "createdAt": "2026-09-07T15:16:15.747Z",
+      "updatedAt": "2026-09-08T08:32:36.275Z",
+      "sessionInfo": []
+    },
+    {
+      "id": "9157734d-a878-4fe3-a96b-7dc5bf1a7a2b",
+      "title": "R2 — User-defined filtering: deny and allow, by number, range, pattern and location [RELEASE 1]",
+      "description": "RELEASE 1. THIS IS THE PRODUCT — release 1 is this requirement plus what makes it usable (R4-R8). No external spam data.\n\nSCOPE, decided 2026-09-08: CALLS on both platforms. SMS on iPhone only. Android SMS is out — blocking an SMS there requires becoming the default SMS app, i.e. building a complete messaging application. See P012(F005) and idea I001.\n\nRULE TYPES: exact number, pattern match, starts-with, ends-with, prefix, caller ID, originating location (city/region).\n\nDENY AND ALLOW WITH EXCEPTIONS: a rule is deny or allow. Allow carves exceptions out of a deny — deny 0987.777.xxx but allow 0987777212.\n- Android calls and iOS SMS: evaluated live in precedence order on arrival.\n- iOS calls: resolved at EXPANSION time by set subtraction — the excepted number is never emitted, 999 entries instead of 1000, because CallKit has no allow list.\n- On iOS calls an allow rule not inside any deny is a no-op, since absence from the block list already means allowed. The UI should not imply otherwise.\n\nPRECEDENCE — MOST SPECIFIC WINS. The longer, more precise rule beats the broader one, so an allow on an exact number beats a deny on its range, with no manual ordering. Equally specific conflicts are surfaced to the user, never resolved silently.\n\nUNIVERSALITY: every nation, every location, every number, within the platform limits below. (Coding rule: Guidelines §1.)\n\nHONESTY: show each rule's computed expansion size and per-platform verdict from real data. Never silently drop, narrow or partially apply a rule.\n\n=== THE iOS ENTRY LIMIT — MEASURED, AND HOW IT IS HANDLED ===\nMeasured 2026-09-08 on iPhone 13 / iOS 26.6.1 (P001(F001)/T001): the hard cap is between 1,900,000 and 2,000,000 blocking entries. Exceeding it returns CXErrorCodeCallDirectoryManagerErrorMaximumEntriesExceeded (code 5). Timings: 1M in 7.6s, 1.5M in 9.4s, 1.9M in 12.1s. Identification entries (with a label) cost about 4x — 1.9M took 47.6s.\n\nWHEN THAT COST IS PAID: only when the extension is enabled and when the app asks iOS to reload after a rule or data change. NOT at call time — when a call arrives iOS reads its own database and our code does not run. So the load time is a background one-off, not per-call latency.\n\nTHEREFORE:\n- The entry budget is INTERNAL CONFIGURATION, never a hardcoded constant and NEVER A USER SETTING. Users do not think in entries; a number in the UI is our implementation leaking onto their screen (see R8 and Guidelines §5).\n- Start near the cap rather than conservatively, since the only cost of a bigger list is background time.\n- On error 5, back off automatically and mark the offending rule as too broad for iPhone. That behaves correctly on devices and iOS versions we have never tested — which matters, because whether the cap varies by device is UNTESTED (one device only).\n- The user sees exactly two things: \"this rule is too broad for iPhone\" against the specific rule that did not fit, and, after a large change, an indication that new rules take a short time to become active. Without the second, a user who edits a rule and immediately gets a call thinks the app is broken.\n\nVERIFIED FEASIBILITY — iOS from SDK 26.2 headers, Android from android-36 sources, both on the dev machine:\n- ANDROID CALLS: all rule types evaluate live, no expansion. onScreenCall(Call.Details) gives the tel: URI; CallResponse.Builder gives setDisallowCall, setRejectCall, setSilenceCall, setSkipCallLog, setSkipNotification.\n  · FIVE SECOND LIMIT: our code must answer within 5 seconds of being asked, and the phone does not ring until it does. Hard constraint on the core's evaluate(). Internal only, never user-visible.\n  · CONTACTS EXEMPT BY DEFAULT: only calls not in the user's contacts are screened, unless the app holds READ_CONTACTS.\n  · WITHHELD NUMBERS CANNOT BE BLOCKED: PRESENTATION_RESTRICTED / UNKNOWN / UNAVAILABLE / PAYPHONE calls never reach the service. Users will expect this to work and it cannot.\n- iOS SMS: all rule types evaluate live via ILMessageFilterQueryHandling (sender, messageBody, receiverISOCountryCode). Verdict caps at Junk folder, not deletion; unknown senders only.\n- iOS CALLS: rules pre-expanded to exact ascending int64 entries, within the limit above. The only shipped surface where rules cannot run live.\n- BlockedNumberProvider is NOT usable — only the system, default SMS app, default dialer and carrier apps may write to it, and it stores exact numbers only.\n\nWHAT THE USER SEES WHEN A CALL IS BLOCKED:\n- Android: nothing, with disallow + skipNotification + skipCallLog. Whether blocked calls stay visible for later review is a USER SETTING we expose — the platform supports both.\n- iOS: nothing, and no setting exists. The system rejects the call and never tells the app.\n\nExpansion comes from libphonenumber metadata across 245 territories, using possibleLengths and nationalNumberPattern per country per number type. Location filtering resolves through the geocoding data mapping prefix to place — \"filter by city\" and \"filter by prefix\" are one operation with one implementation. CAVEAT: mobile numbers have NO geocoding data anywhere, so location rules match landlines only and the UI must say so.\n\nMEASURED DISTRIBUTION: 226/244 countries need <=4 digits pinned for mobile, 223/245 for landline. Hard tail: DE fixedLine 10 digits, AT mobile 8, DE mobile 6, IT fixedLine 7. Note these were computed against a 1,000,000 assumption; with the real cap near 2,000,000 they are slightly pessimistic and should be recomputed in F002.\n\nThe expander must apply the validating regex, not merely sum possible lengths — summing materially overestimates, badly for landlines.\n\nStorage of rules versus expansions: Guidelines §2.",
+      "status": "planned",
+      "macroTasks": [
+        {
+          "id": "MT-005",
+          "title": "Rule model and evaluator in the shared Rust core, deny + allow with most-specific-wins precedence",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:11.464Z",
+          "updatedAt": "2026-09-08T07:45:11.464Z"
+        },
+        {
+          "id": "MT-006",
+          "title": "Range expander driven by possibleLengths plus nationalNumberPattern, regex-pruned, with allow-exception subtraction",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:11.464Z",
+          "updatedAt": "2026-09-08T07:45:11.464Z"
+        },
+        {
+          "id": "MT-007",
+          "title": "Prefix-to-place geocoder over libphonenumber geocoding data (the phonenumber crate has none)",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:11.464Z",
+          "updatedAt": "2026-09-08T07:45:11.464Z"
+        },
+        {
+          "id": "MT-008",
+          "title": "Per-rule expansion-size display with per-platform verdict",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:11.464Z",
+          "updatedAt": "2026-09-08T07:45:11.464Z"
+        },
+        {
+          "id": "MT-009",
+          "title": "Surface conflicting equally-specific rules to the user rather than resolving silently",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:11.464Z",
+          "updatedAt": "2026-09-08T07:45:11.464Z"
+        }
+      ],
+      "linkedPhaseIds": [
+        "f2ebcc6f-be9a-4c65-843f-d89765b78397",
+        "9b37746d-bcee-4254-abd7-00d250e8567c",
+        "f2041384-6ad9-4ed6-a3af-32671e549bd5",
+        "6aee6079-6b0b-48a6-adff-54442dae6456",
+        "84b6b5ca-853f-4f55-84cc-d6bef94edf84",
+        "7ce77c64-eb56-4772-9b1f-a96929f46c46",
+        "f15f7aa3-2103-46b2-bf50-835bba1dda63"
+      ],
+      "createdAt": "2026-09-07T15:16:26.371Z",
+      "updatedAt": "2026-09-08T13:50:28.794Z",
+      "sessionInfo": []
+    },
+    {
+      "id": "4c3e689b-d087-48a0-8354-c821534af223",
+      "title": "R3 — Warn the user when an incoming call is suspected spam [LATER — needs R1]",
+      "description": "DEFERRED with R1, which it depends on entirely — nothing to warn from without an external spam list. Not in release 1.\n\nWhen a call arrives from a number the external source flags as spam, the user is told. Labelled, not silently blocked, so the user decides.\n\nPLATFORM MECHANISMS — the two platforms do this DIFFERENTLY. Verified 2026-09-08.\n\niOS calls: CXCallDirectoryExtensionContext addIdentificationEntryWithNextSequentialPhoneNumber:label:. The label replaces the caller name ON THE SYSTEM CALL SCREEN. Exact int64 numbers, strictly ascending, supplied ahead of time.\n\nANDROID — NO SYSTEM LABEL EXISTS. Verified by reading android-36 sources: CallScreeningService has no label, name or caller-id setter anywhere. CallResponse.Builder offers only setDisallowCall, setRejectCall, setSilenceCall, setSkipCallLog, setSkipNotification. The documentation says: \"If your app provides a caller ID experience, it should launch an activity to show the caller ID information from onScreenCall\". So on Android a spam warning is OUR OWN overlay activity, launched within the 5-second screening window before the phone rings. This corrects the earlier \"believed possible via CallScreeningService\" note — the capability exists but the mechanism is completely different from iOS, and the UX must be designed for it rather than assumed symmetric.\n\nFIVE SECOND BUDGET on Android: respondToCall must be called within 5 seconds of binding and the device does not ring until it is. Any overlay and any lookup happens inside that window.\n\niOS SMS: ILMessageFilterActionPromotion / ILMessageFilterActionTransaction with iOS 16+ sub-actions route a message to a labelled folder. No way to annotate a message in place.\n\nSHARED-LIST CONSEQUENCE on iOS: identification entries (this) and blocking entries (R1's list, R2's expanded rules) come from the SAME extension in the SAME run under one limit, so they compete. Rules-first settles priority: R2 first, then R3 and R1 share what is left. Whether iOS caps the two entry kinds separately is measured in P001(F001)/T001.\n\nPRODUCT NOTE: labelling beats blocking for uncertain matches, and is the only honest treatment of a third-party verdict the user did not author. Blocking stays for the user's own rules (R2) and high-confidence sources.",
+      "status": "deferred",
+      "macroTasks": [
+        {
+          "id": "MT-001",
+          "title": "Confirm Android can show a custom spam label on the incoming call screen",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-07T18:03:09.197Z",
+          "updatedAt": "2026-09-07T18:03:09.197Z"
+        },
+        {
+          "id": "MT-002",
+          "title": "Design deliberate iOS budget allocation across spam list, user rules, and labels",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-07T18:03:09.197Z",
+          "updatedAt": "2026-09-07T18:03:09.197Z"
+        },
+        {
+          "id": "MT-003",
+          "title": "Confidence model deciding label-vs-block per source",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-07T18:03:09.197Z",
+          "updatedAt": "2026-09-07T18:03:09.197Z"
+        }
+      ],
+      "linkedPhaseIds": [
+        "6aee6079-6b0b-48a6-adff-54442dae6456",
+        "7ce77c64-eb56-4772-9b1f-a96929f46c46"
+      ],
+      "createdAt": "2026-09-07T18:03:09.197Z",
+      "updatedAt": "2026-09-08T11:10:57.019Z",
+      "sessionInfo": []
+    },
+    {
+      "id": "e2b9c834-7eec-4659-988f-dfc02e642621",
+      "title": "R4 — Extension enablement: detect it, explain it, recover from it [RELEASE 1]",
+      "description": "Neither platform filters anything until the user goes into system Settings and turns the extension on. The app cannot do this for them. This is the failure mode that kills apps in this category: installed, rules written, nothing filtered, user concludes it is broken.\n\niOS: the user must visit Settings > Apps > Phone > Call Blocking & Identification. CXCallDirectoryManager provides getEnabledStatusForExtensionWithIdentifier:completionHandler: returning CXCallDirectoryEnabledStatusUnknown / Disabled / Enabled, and openSettingsWithCompletionHandler: (iOS 13.4+) to take the user there. Both verified in SDK 26.2 headers.\n\nAndroid: the app must hold the call-screening role. Acquisition flow NOT YET VERIFIED — part of P001(F001)/T002.\n\nREQUIRED BEHAVIOUR:\n- Detect the disabled state at launch and on return to foreground. Users also turn the extension off later, or a system update resets it, so this is not a one-time onboarding check — it must be re-checked continuously, not assumed after first success.\n- Present it as a first-class blocking screen, not a dismissible wizard step. While the extension is off the app is doing nothing, and it must say so plainly rather than showing a normal rule list that implies it is working.\n- Deep-link straight to the right Settings page rather than describing a path in prose.\n- Treat CXCallDirectoryEnabledStatusUnknown as not-enabled for display purposes, but distinguish it in diagnostics — it usually means the extension has never been loaded.\n\nThis is the highest-leverage screen in v1: every other feature is invisible until it is satisfied.",
+      "status": "planned",
+      "macroTasks": [
+        {
+          "id": "MT-001",
+          "title": "Continuous enablement detection on both platforms (launch + foreground, not one-time)",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:36:18.495Z",
+          "updatedAt": "2026-09-08T07:36:18.495Z"
+        },
+        {
+          "id": "MT-002",
+          "title": "Blocking not-enabled screen with deep link to the correct Settings page",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:36:18.495Z",
+          "updatedAt": "2026-09-08T07:36:18.495Z"
+        },
+        {
+          "id": "MT-003",
+          "title": "Verify the Android call-screening role acquisition flow",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:36:18.495Z",
+          "updatedAt": "2026-09-08T07:36:18.495Z"
+        }
+      ],
+      "linkedPhaseIds": [
+        "ded9bd92-3be0-40da-bd1a-1ff821cf70fb",
+        "b4b03f38-2f68-49a3-b5c3-ae7aa0735db9",
+        "58c68ee1-a4e2-44d4-a3c4-e5844109c21a"
+      ],
+      "createdAt": "2026-09-08T07:36:18.495Z",
+      "updatedAt": "2026-09-08T08:32:23.706Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+          "createdAt": "2026-09-08T12:40:48.821Z"
+        }
+      ]
+    },
+    {
+      "id": "0d5df817-742b-4161-b77a-9735c4610d7d",
+      "title": "R5 — Data updates must never require an app release [RELEASE 1]",
+      "description": "Project Guidelines §1 states: \"Adding a country means shipping its data. Adding a language means shipping its file. Neither is a code change and neither is a release.\" That is only true if there is a delivery channel for data that does not go through app review.\n\nWHY THIS IS IN RELEASE 1, NOT LATER: it is an architectural property, not a feature. Retrofitting it means changing how the engine loads everything it depends on. libphonenumber publishes metadata updates regularly; number plans genuinely change. Waiting on two store review queues (three with AppGallery) to add a country would break the guideline and make the universality promise in R2 false in practice.\n\nREQUIRED BEHAVIOUR:\n- Seed data ships in the app bundle so a fresh install works offline immediately, with no first-run download.\n- Updates are fetched over the air and versioned. The engine must run against a metadata version it was not compiled against — so no code may assume a fixed set of countries, number types, or fields.\n- Updates are atomic: a half-applied metadata set must never be visible to the evaluator, or rules would silently evaluate against inconsistent data.\n- The active data version is visible in the app and in diagnostics, because \"why did this rule stop matching\" is otherwise unanswerable.\n\nCONSEQUENCE THAT MUST BE HANDLED: a metadata update can change what an existing rule expands to — new valid lengths, a changed national pattern, a reassigned geographic prefix. This is exactly why Guidelines §2 requires storing the rule and never the expansion. On iOS a metadata update must therefore trigger re-expansion and a Call Directory reload (CXCallDirectoryManager reloadExtensionWithIdentifier:), and the user should be told when a rule's meaning or its per-platform verdict changed as a result — per R2's honesty requirement, a rule must never silently start or stop matching.\n\nSCOPE AND GENERALITY: release 1 carries libphonenumber metadata, geocoding data, and R7's language files. Build it as a GENERAL versioned-dataset channel, not one wired to phone metadata — R1's daily-refreshed spam list rides the same pipe when it lands, with no rework. That generality is the reason R1 can be deferred cheaply.\n\nNote release 1 needs no servers for filtering itself; this channel is the only network dependency, and it can be plain static hosting.",
+      "status": "planned",
+      "macroTasks": [
+        {
+          "id": "MT-001",
+          "title": "Versioned dataset format and atomic swap, general across dataset kinds",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:36:33.829Z",
+          "updatedAt": "2026-09-08T07:36:33.829Z"
+        },
+        {
+          "id": "MT-002",
+          "title": "Bundle seed data plus over-the-air update fetch",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:36:33.829Z",
+          "updatedAt": "2026-09-08T07:36:33.829Z"
+        },
+        {
+          "id": "MT-003",
+          "title": "Re-expand rules and reload the iOS Call Directory when metadata changes",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:36:33.829Z",
+          "updatedAt": "2026-09-08T07:36:33.829Z"
+        },
+        {
+          "id": "MT-004",
+          "title": "Notify the user when an update changed a rule's meaning or verdict",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:36:33.829Z",
+          "updatedAt": "2026-09-08T07:36:33.829Z"
+        }
+      ],
+      "linkedPhaseIds": [
+        "b85eacfe-d3f7-4382-afad-004a97bdadcf",
+        "896fb909-24f2-486f-857e-43ce5231036d"
+      ],
+      "createdAt": "2026-09-08T07:36:33.829Z",
+      "updatedAt": "2026-09-08T08:32:24.849Z",
+      "sessionInfo": []
+    },
+    {
+      "id": "060363df-b4ee-4498-86f5-a2af72902bf9",
+      "title": "R6 — Quick block/unblock from a call the user just received [RELEASE 1 Android; impossible on iOS]",
+      "description": "From a call they have just received, the user should be able to add a filter, and block or unblock the number, without typing it.\n\nThis is the most natural way to use the app — \"that number that just called me, never again\" — and it is the primary way users will create rules.\n\nANDROID: achievable. CallScreeningService sees the call, and a post-call notification or in-app recents entry can offer one-tap block. Exact mechanism NOT YET VERIFIED — part of P001(F001)/T002.\n\niOS: NOT POSSIBLE. Verified against SDK 26.2 — there is no public call-history or recents API, no call-screen extension point, and no callback to the app when a Call Directory entry blocks a call. The extension is write-only and silent; the app cannot learn that any call occurred, including ones it blocked itself. CXCallObserver sees only CallKit calls the app itself manages (VoIP), and CXCall carries no number.\n\niOS CONSEQUENCE: the user must read the number from Apple's own Phone recents and enter it in the app. Mitigations to design rather than assume: paste detection from the clipboard when the app opens, a share-sheet entry point if one is reachable from the Phone app, and making manual entry as fast as possible. None of these recover the one-tap flow.\n\nThis is the largest UX asymmetry between the platforms and it should be decided deliberately, not discovered during implementation. It also compounds the R4 problem: on iOS the app is both invisible in operation and unable to offer the most natural entry point.",
+      "status": "planned",
+      "macroTasks": [
+        {
+          "id": "MT-001",
+          "title": "Verify the Android post-call block mechanism and its role/permission requirements",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:21.261Z",
+          "updatedAt": "2026-09-08T07:45:21.261Z"
+        },
+        {
+          "id": "MT-002",
+          "title": "Design the best available iOS entry path (clipboard detection, share sheet, fast manual entry)",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:21.261Z",
+          "updatedAt": "2026-09-08T07:45:21.261Z"
+        }
+      ],
+      "linkedPhaseIds": [
+        "b4b03f38-2f68-49a3-b5c3-ae7aa0735db9",
+        "7ce77c64-eb56-4772-9b1f-a96929f46c46",
+        "ded9bd92-3be0-40da-bd1a-1ff821cf70fb"
+      ],
+      "createdAt": "2026-09-08T07:45:21.261Z",
+      "updatedAt": "2026-09-08T08:32:29.479Z",
+      "sessionInfo": []
+    },
+    {
+      "id": "da9fe241-fd59-403a-a3e3-d8c4f43eac0e",
+      "title": "R7 — Multilanguage [RELEASE 1]",
+      "description": "The app works in the user's language. This is two separate things and they do not have the same coverage.\n\n1. UI TEXT. Normal app localization. Any language we choose to translate.\n\n2. PLACE NAMES (city and region shown for a number). These come from libphonenumber's geocoding data, which ships 34 languages: ar be bg bs de el en es fa fi fr hr hu hy id it iw ja kk ko nl pl pt ro ru sq sr sv th tr uk vi zh zh_Hant. Not every country is covered in every language. English is the most complete at 151 countries.\n\nCONSEQUENCE: the app can be in a language the place data is not. A user with the app in Finnish may look at a country whose place names exist only in English.\n\nREQUIRED FALLBACK ORDER: user's language, then English, then show the number's prefix with no place name. Never show a blank or an untranslated key.\n\nLanguage data follows Project Guidelines §1 — languages are data files, not code. Adding a language is not a release. This shares the delivery channel in R5.\n\nOPEN: which UI languages ship in v1. Suggest starting with the languages the geocoding data covers well, so the two halves match.",
+      "status": "planned",
+      "macroTasks": [
+        {
+          "id": "MT-001",
+          "title": "UI localization infrastructure",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:39.957Z",
+          "updatedAt": "2026-09-08T07:45:39.957Z"
+        },
+        {
+          "id": "MT-002",
+          "title": "Place-name lookup with user-language then English then prefix-only fallback",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:39.957Z",
+          "updatedAt": "2026-09-08T07:45:39.957Z"
+        },
+        {
+          "id": "MT-003",
+          "title": "Decide which UI languages ship in v1",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:39.957Z",
+          "updatedAt": "2026-09-08T07:45:39.957Z"
+        }
+      ],
+      "linkedPhaseIds": [
+        "f2041384-6ad9-4ed6-a3af-32671e549bd5",
+        "b85eacfe-d3f7-4382-afad-004a97bdadcf",
+        "ded9bd92-3be0-40da-bd1a-1ff821cf70fb",
+        "b4b03f38-2f68-49a3-b5c3-ae7aa0735db9"
+      ],
+      "createdAt": "2026-09-08T07:45:39.957Z",
+      "updatedAt": "2026-09-08T08:32:31.595Z",
+      "sessionInfo": []
+    },
+    {
+      "id": "35a253ec-c0ae-4846-9616-e0be2e45d553",
+      "title": "R8 — Simple modern UI, free, no ads [RELEASE 1]",
+      "description": "The app is free to use. No ads for now. The UI is simple but modern, native on each platform (SwiftUI, Jetpack Compose).\n\nSIMPLICITY IS HARD HERE, because the app has to show things users should not have to understand:\n- that a rule works on one platform and not the other (R2)\n- that the extension is off and nothing is being filtered (R4)\n- that location rules only match landlines (R2)\n- that on iPhone you cannot block the number that just called you (R6)\n- that on iPhone the app cannot tell you a call was blocked, because the system never informs it (R2)\n\nThe design job is showing these honestly without making the app feel technical. Default to plain language and concrete numbers over settings and explanations. A user who only ever types a number and taps block should never meet any of the above.\n\nFREE IS GENUINELY FREE IN RELEASE 1: with no external spam data, there are no servers to run beyond static hosting for R5's data files. Nothing costs money per user.\n\nCONSEQUENCE TO TRACK FOR LATER: R1's daily-refreshed spam list changes that. It means a data licence and running infrastructure against zero revenue — and the tellows evidence on R1 shows redistribution licences are not sold off the shelf. Whatever makes external data sustainable will probably also decide whether the app stays free. Flagged so it is a deliberate choice then, not a surprise.\n\nOut of scope for now: ads, subscriptions, paid tiers.",
+      "status": "planned",
+      "macroTasks": [
+        {
+          "id": "MT-001",
+          "title": "Design the rule list and rule editor so platform limits read as plain language, not warnings",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:47.603Z",
+          "updatedAt": "2026-09-08T07:45:47.603Z"
+        },
+        {
+          "id": "MT-002",
+          "title": "Native UI shells: SwiftUI and Jetpack Compose",
+          "description": "",
+          "status": "planned",
+          "createdAt": "2026-09-08T07:45:47.603Z",
+          "updatedAt": "2026-09-08T07:45:47.603Z"
+        }
+      ],
+      "linkedPhaseIds": [
+        "ded9bd92-3be0-40da-bd1a-1ff821cf70fb",
+        "b4b03f38-2f68-49a3-b5c3-ae7aa0735db9",
+        "1334c009-ad49-44b3-aed4-ed17a91d3259"
+      ],
+      "createdAt": "2026-09-08T07:45:47.603Z",
+      "updatedAt": "2026-09-08T08:32:32.407Z",
+      "sessionInfo": []
+    }
+  ]
+}

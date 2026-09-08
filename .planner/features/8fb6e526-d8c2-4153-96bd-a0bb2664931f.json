@@ -1,0 +1,27 @@
+{
+  "id": "8fb6e526-d8c2-4153-96bd-a0bb2664931f",
+  "number": 5,
+  "shortId": "BFHMP",
+  "priority": 7,
+  "name": "Android app",
+  "description": "The Android app: call screening, SMS filtering, role acquisition, and the Jetpack Compose interface. Thin shell over F002 — per Guidelines §3 it adapts the core to Android's APIs and does no filtering of its own.\n\nCURRENT STATE: nothing built. IMPORTANT — unlike F004, NONE of the Android API claims below have been verified. There is no Android SDK on this machine (no ~/Library/Android/sdk, no adb, no sdkmanager). They are working assumptions from memory and Guidelines §4 forbids treating them as decided. F001's task T002 verifies them and this feature should not be planned in detail until it has.\n\nAndroid is the platform where all seven rule types are believed to run LIVE on both calls and SMS with no expansion, which makes it the stronger surface and carries the product's value.\n\nCALL SCREENING (android.telecom.CallScreeningService) — ASSUMED: receives the incoming number at call time and calls F002 to decide. CallResponse is believed to offer setDisallowCall, setRejectCall, setSilenceCall, setSkipCallLog and setSkipNotification — i.e. real control over what the user sees when a call is blocked, which iOS gives none of. Requires ROLE_CALL_SCREENING via RoleManager; acquisition flow unverified.\n\nSMS FILTERING — ASSUMED, AND THE BIGGEST OPEN RISK: intercepting a message is one thing, BLOCKING it may be another. Since Android 4.4 only the default SMS app writes to the SMS provider and the broadcast to other apps is believed non-abortable. If blocking requires becoming the DEFAULT SMS APP, that means building a complete messaging application — a very large scope increase, and close to the iOS TelephonyMessagingKit situation already ruled out of scope. Settle this before committing to Android SMS.\n\nQUICK BLOCK FROM A RECEIVED CALL (R6): achievable here and impossible on iOS. A post-call notification or in-app recents entry offers one-tap block. This is the most natural way to use the app, so Android gets the better experience.\n\nENABLEMENT (R4): the app must hold the call-screening role, detected continuously rather than once, with a first-class screen while it is missing.\n\nUI (Jetpack Compose, R8): rule list and editor, per-rule expansion count and verdict from F002, enablement screen, localization (R7). Note expansion counts still matter here even though Android never expands — the user shares rules conceptually across their devices and the UI should not imply a rule means different things.\n\nDISTRIBUTION RISK: Google Play restricts the SMS and Call Log permission groups. A Permissions Declaration and review are required; caller ID and spam blocking is understood to be a permitted use case, but approval is not guaranteed. Confirm current policy in T002.",
+  "descriptionUpdatedAt": "2026-09-08T08:29:22.678Z",
+  "discussedAt": "",
+  "contextReady": false,
+  "contextReadyReason": "",
+  "startDate": "",
+  "endDate": "",
+  "workDone": "",
+  "workRemaining": "",
+  "acceptedDecisions": [],
+  "phaseIds": [
+    "7ce77c64-eb56-4772-9b1f-a96929f46c46",
+    "f15f7aa3-2103-46b2-bf50-835bba1dda63",
+    "b4b03f38-2f68-49a3-b5c3-ae7aa0735db9"
+  ],
+  "dependsOn": [],
+  "statusLog": [],
+  "createdAt": "2026-09-08T08:29:22.672Z",
+  "updatedAt": "2026-09-08T10:02:49.295Z",
+  "sessionInfo": []
+}
