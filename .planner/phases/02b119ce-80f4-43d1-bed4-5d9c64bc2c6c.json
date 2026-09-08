@@ -36,9 +36,9 @@
       "priority": 1,
       "shortName": "create-the-repository-and-deci",
       "title": "Create the repository and decide its layout",
-      "status": "in-progress",
-      "description": "First code-bearing action in the project. Depends on F007 (tools installed) and follows F001 (verification done).\n\nCURRENT STATE: /Users/antonio/projects/caller-filter is EMPTY and is NOT a git repository. `git init` happens here.\n\nTHE DECISION THIS TASK EXISTS TO MAKE — repository layout. One repo holding the Rust core plus both apps, or separate repos. It is not cosmetic: it determines how UniFFI bindings and packaged datasets flow from the core to the two apps.\n- One repo: core and apps always in step, CI is simple, a core change and its binding regeneration land in one commit. Downside: iOS and Android developers carry the whole tree.\n- Separate repos: needs a publishing step for the core artifact, and the apps can silently sit on a stale core.\nRECOMMENDATION: one repo. The core is small, the apps are thin shells over it, and Guidelines §3 puts all logic in the core — so the core changes far more often than the shells, and keeping them in lockstep is the common case rather than the exception.\n\nWORK:\n- git init, .gitignore covering Rust target/, Xcode build products and user state, Gradle build output, and — importantly — GENERATED UNIFFI BINDINGS and PACKAGED DATASETS. Both are build outputs. Checked-in bindings drift from the core silently and only fail at runtime on one platform; a checked-in dataset defeats R5's versioning.\n- Directory layout reflecting the decision above.\n- Cargo workspace for the core crate, building and testing on the host.\n- README recording the layout decision and its reasoning, so the next person does not relitigate it.\n\nDO NOT: create the Xcode or Android project skeletons here, and do not set up CI. Those are separate tasks in this phase. This task ends with a repository holding a Rust core that builds and tests on the host.\n\nEDGE CASE: the directory already exists and is empty — git init in place, do not create a nested directory.",
-      "descriptionUpdatedAt": "2026-09-08T10:02:16.795Z",
+      "status": "done",
+      "description": "First code-bearing action in the project. Depends on F007 (tools installed) and follows F001 (verification done).\n\nCURRENT STATE: /Users/antonio/projects/caller-filter is EMPTY and is NOT a git repository. `git init` happens here.\n\nTHE DECISION THIS TASK EXISTS TO MAKE — repository layout. One repo holding the Rust core plus both apps, or separate repos. It is not cosmetic: it determines how UniFFI bindings and packaged datasets flow from the core to the two apps.\n- One repo: core and apps always in step, CI is simple, a core change and its binding regeneration land in one commit. Downside: iOS and Android developers carry the whole tree.\n- Separate repos: needs a publishing step for the core artifact, and the apps can silently sit on a stale core.\nRECOMMENDATION: one repo. The core is small, the apps are thin shells over it, and Guidelines §3 puts all logic in the core — so the core changes far more often than the shells, and keeping them in lockstep is the common case rather than the exception.\n\nWORK:\n- git init, .gitignore covering Rust target/, Xcode build products and user state, Gradle build output, and — importantly — GENERATED UNIFFI BINDINGS and PACKAGED DATASETS. Both are build outputs. Checked-in bindings drift from the core silently and only fail at runtime on one platform; a checked-in dataset defeats R5's versioning.\n- Directory layout reflecting the decision above.\n- Cargo workspace for the core crate, building and testing on the host.\n- README recording the layout decision and its reasoning, so the next person does not relitigate it.\n\nDO NOT: create the Xcode or Android project skeletons here, and do not set up CI. Those are separate tasks in this phase. This task ends with a repository holding a Rust core that builds and tests on the host.\n\nEDGE CASE: the directory already exists and is empty — git init in place, do not create a nested directory.\n\n---\n**Completion summary:**\nDONE 2026-09-08. Repository exists, core builds and tests on the host, first commit made.\n\nDECISION — ONE REPOSITORY holding the core and both apps. Recorded in README.md with the reasoning, so it is not relitigated. Rationale: the apps are thin shells and all filtering logic is in the core by Guidelines §3, so the core changes far more often than the shells and a core change plus its regenerated bindings should land in one commit. Separate repos would need a publishing step and would let an app sit silently on a stale core. The cost — both platform developers carry the whole tree — is small by comparison.\n\nLAYOUT CREATED at /Users/antonio/projects/caller-filter:\n  core/src/lib.rs     the engine (skeleton)\n  core/Cargo.toml     callerfilter-core\n  Cargo.toml          workspace\n  tools/  docs/       empty, for the dataset converter and design notes\n  README.md\n  .gitignore\nThe iOS and Android projects join in T008.\n\nCOMMIT c1b0a3b — 39 files. Includes .planner/ deliberately: the plan is the project's source of truth and the README points at it.\n\nCARGO SETUP:\n- Workspace with resolver 2, edition 2021, rust-version 1.90.\n- core crate-type = [\"lib\", \"staticlib\", \"cdylib\"] — rlib for host tests, staticlib/cdylib for iOS linking and the Android JNI.\n- phonenumber 0.3 declared as a workspace dependency (parse/validate/format; it has no geocoder, which we write ourselves in F002).\n- Release profile tuned for SIZE not speed: opt-level=\"z\", lto, codegen-units=1, strip, panic=abort. Reason: the iOS Call Directory and SMS filter extensions run under tight memory limits, so the core's binary size matters more than it would in an ordinary app. Revisit if profiling shows the Android 5-second screening budget is at risk.\n\nCODE WRITTEN — deliberately minimal, this task is scaffolding not F002:\n- Decision enum (Allow / Block / Silence / Label) with the platform asymmetries documented on it — Silence is Android-only, Label is iOS-calls-only.\n- EntryLimit newtype carrying the measured iOS cap. Default is 1,800,000, chosen near the measured ~2,000,000 cap rather than conservatively, because the only cost of a bigger list is a one-off background load paid at enable/reload time, never at call time. The doc comment states plainly that this is a starting estimate, that only one device was measured, that the shell must back off on error 5, and that it must never be shown to the user.\n- version() placeholder so the crate and its test harness exist from day one.\n- Two tests, both passing on the host with no device or simulator. One asserts the default limit stays under the measured cap — a guard against someone raising it carelessly later.\n\nGITIGNORE — two entries matter more than the rest and carry comments saying why: generated UniFFI bindings (drift from the core in silence, fail at runtime on one platform only) and packaged datasets (a committed one defeats R5's over-the-air versioning, and a silently truncated one makes rules stop matching with no error anywhere). Signing material and keystores are also excluded.\n\nVERIFIED: `cargo test` passes, 2 tests, no device or simulator involved. `git check-ignore` confirms target/ is excluded.\n\nNOT DONE HERE, by design: Xcode and Android project skeletons (T008), CI and conventions (T009).\n\nNOTE FOR T008: F001's four build traps apply directly — Xcode 26 Debug builds put extension code in a separate __preview.dylib so the extension fails to enable (build Release or set ENABLE_DEBUG_DYLIB=NO); xcodegen's info.path silently drops a hand-written NSExtension dictionary (use info.properties); handle context.isIncremental or hit sqlite constraint errors; retry on CallKit error 7.",
+      "descriptionUpdatedAt": "2026-09-08T13:53:03.504Z",
       "notes": "",
       "statusLog": [
         {
@@ -48,6 +48,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-002-in-progress-done",
+          "date": "2026-09-08T13:53:03.502Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "DONE 2026-09-08. Repository exists, core builds and tests on the host, first commit made.\n\nDECISION — ONE REPOSITORY holding the core and both apps. Recorded in README.md with the reasoning, so it is not relitigated. Rationale: the apps are thin shells and all filtering logic is in the core by Guidelines §3, so the core changes far more often than the shells and a core change plus its regenerated bindings should land in one commit. Separate repos would need a publishing step and would let an app sit silently on a stale core. The cost — both platform developers carry the whole tree — is small by comparison.\n\nLAYOUT CREATED at /Users/antonio/projects/caller-filter:\n  core/src/lib.rs     the engine (skeleton)\n  core/Cargo.toml     callerfilter-core\n  Cargo.toml          workspace\n  tools/  docs/       empty, for the dataset converter and design notes\n  README.md\n  .gitignore\nThe iOS and Android projects join in T008.\n\nCOMMIT c1b0a3b — 39 files. Includes .planner/ deliberately: the plan is the project's source of truth and the README points at it.\n\nCARGO SETUP:\n- Workspace with resolver 2, edition 2021, rust-version 1.90.\n- core crate-type = [\"lib\", \"staticlib\", \"cdylib\"] — rlib for host tests, staticlib/cdylib for iOS linking and the Android JNI.\n- phonenumber 0.3 declared as a workspace dependency (parse/validate/format; it has no geocoder, which we write ourselves in F002).\n- Release profile tuned for SIZE not speed: opt-level=\"z\", lto, codegen-units=1, strip, panic=abort. Reason: the iOS Call Directory and SMS filter extensions run under tight memory limits, so the core's binary size matters more than it would in an ordinary app. Revisit if profiling shows the Android 5-second screening budget is at risk.\n\nCODE WRITTEN — deliberately minimal, this task is scaffolding not F002:\n- Decision enum (Allow / Block / Silence / Label) with the platform asymmetries documented on it — Silence is Android-only, Label is iOS-calls-only.\n- EntryLimit newtype carrying the measured iOS cap. Default is 1,800,000, chosen near the measured ~2,000,000 cap rather than conservatively, because the only cost of a bigger list is a one-off background load paid at enable/reload time, never at call time. The doc comment states plainly that this is a starting estimate, that only one device was measured, that the shell must back off on error 5, and that it must never be shown to the user.\n- version() placeholder so the crate and its test harness exist from day one.\n- Two tests, both passing on the host with no device or simulator. One asserts the default limit stays under the measured cap — a guard against someone raising it carelessly later.\n\nGITIGNORE — two entries matter more than the rest and carry comments saying why: generated UniFFI bindings (drift from the core in silence, fail at runtime on one platform only) and packaged datasets (a committed one defeats R5's over-the-air versioning, and a silently truncated one makes rules stop matching with no error anywhere). Signing material and keystores are also excluded.\n\nVERIFIED: `cargo test` passes, 2 tests, no device or simulator involved. `git check-ignore` confirms target/ is excluded.\n\nNOT DONE HERE, by design: Xcode and Android project skeletons (T008), CI and conventions (T009).\n\nNOTE FOR T008: F001's four build traps apply directly — Xcode 26 Debug builds put extension code in a separate __preview.dylib so the extension fails to enable (build Release or set ENABLE_DEBUG_DYLIB=NO); xcodegen's info.path silently drops a hand-written NSExtension dictionary (use info.properties); handle context.isIncremental or hit sqlite constraint errors; retry on CallKit error 7."
         }
       ],
       "decisions": [],
@@ -57,43 +65,43 @@
           "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-001-decide-repository-layout-one-repo-vs-separate-record-the-decision-and-reasoning-in-the-readme",
           "number": 1,
           "title": "Decide repository layout: one repo vs separate; record the decision and reasoning in the README",
-          "checked": false
+          "checked": true
         },
         {
           "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-002-git-init-in-the-existing-empty-directory-do-not-nest",
           "number": 2,
           "title": "git init in the existing empty directory (do not nest)",
-          "checked": false
+          "checked": true
         },
         {
           "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-003-write-gitignore-rust-target-xcode-build-products-and-user-state-gradle-output",
           "number": 3,
           "title": "Write .gitignore: Rust target/, Xcode build products and user state, Gradle output",
-          "checked": false
+          "checked": true
         },
         {
           "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-004-ensure-gitignore-excludes-generated-uniffi-bindings-and-packaged-datasets-both-are-build-outputs",
           "number": 4,
           "title": "Ensure .gitignore excludes generated UniFFI bindings and packaged datasets — both are build outputs",
-          "checked": false
+          "checked": true
         },
         {
           "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-005-create-the-cargo-workspace-and-the-core-crate-skeleton",
           "number": 5,
           "title": "Create the Cargo workspace and the core crate skeleton",
-          "checked": false
+          "checked": true
         },
         {
           "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-006-verify-the-core-builds-and-its-tests-run-on-the-host-with-no-device-or-simulator",
           "number": 6,
           "title": "Verify the core builds and its tests run on the host with no device or simulator",
-          "checked": false
+          "checked": true
         },
         {
           "id": "835f92a3-0c5a-4907-9c93-7ef310771716-check-007-first-commit",
           "number": 7,
           "title": "First commit",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -101,9 +109,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-08T13:50:54.015Z",
-      "completedAt": "",
+      "completedAt": "2026-09-08T13:53:03.502Z",
       "createdAt": "2026-09-08T10:02:16.787Z",
-      "updatedAt": "2026-09-08T13:50:54.015Z",
+      "updatedAt": "2026-09-08T13:53:03.502Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
@@ -119,11 +127,20 @@
       "priority": 2,
       "shortName": "xcode-and-android-project-skel",
       "title": "Xcode and Android project skeletons linking the core",
-      "status": "planned",
+      "status": "in-progress",
       "description": "Stand up both app projects so they compile against the Rust core through UniFFI. Depends on the repository task, and on F001/T002 having established what shape the Android app actually needs to be.\n\nCURRENT STATE: nothing exists. Xcode with iOS SDK 26.2 is present; the Android SDK arrives with F007.\n\nXCODE PROJECT — THREE TARGETS, not one:\n- Host app (SwiftUI).\n- Call Directory extension (CXCallDirectoryProvider) — see P008(F004).\n- SMS filter extension (ILMessageFilterExtension) — see P009(F004).\nBoth extensions link the same core. They run under tight memory limits, so treat the core's binary size and load cost as a build output watched from the first day rather than something discovered when an extension gets killed in the field.\n\nSIGNING, CURRENT CONSTRAINT: no paid Apple Developer account. Free personal-team provisioning, 7-day certificates, own devices only, NO App Groups. Set the skeleton up so it builds under those limits. The real app WILL need an App Group to share rules between host and extensions (R2, R4), so a paid account is a hard prerequisite before F004 is functional. If F007 found that free teams cannot run extensions at all, stop and report.\n\nANDROID PROJECT: Gradle project linking the same core through JNI, with cargo-ndk producing the per-ABI libraries. CHECK F001/T002'S FINDING FIRST — if blocking an SMS requires becoming the default SMS app, the Android app is a materially different shape and that is a product decision, not something to work around while scaffolding.\n\nUNIFFI BINDINGS ARE GENERATED BY THE BUILD, NEVER COMMITTED. The single most important convention here. Checked-in bindings drift from the core in silence and surface as a runtime failure on one platform only. Wire generation into both builds now, while the projects are empty and it is easy.\n\nPROVE IT WORKS END TO END: a trivial core function called successfully from Swift and from Kotlin. That one call validates the toolchain, all seven targets, the linking and the binding generation together. Do this before any real core work in F002.\n\nDO NOT: implement filtering logic here — that is F002, and Guidelines §3 keeps it in the core regardless.",
       "descriptionUpdatedAt": "2026-09-08T10:02:27.055Z",
       "notes": "",
-      "statusLog": [],
+      "statusLog": [
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-001-planned-in-progress",
+          "date": "2026-09-08T13:56:53.054Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
       "decisions": [],
       "acceptedDecisions": [],
       "checklist": [
@@ -186,11 +203,16 @@
       "dependsOn": [],
       "pauseSnapshot": null,
       "pauseHistory": [],
-      "startedAt": "",
+      "startedAt": "2026-09-08T13:56:53.054Z",
       "completedAt": "",
       "createdAt": "2026-09-08T10:02:27.044Z",
-      "updatedAt": "2026-09-08T10:02:27.044Z",
-      "sessionInfo": []
+      "updatedAt": "2026-09-08T13:56:53.054Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+          "createdAt": "2026-09-08T13:56:53.032Z"
+        }
+      ]
     },
     {
       "id": "381feef4-f303-49fb-b02a-02dfa21c90e8",
@@ -275,7 +297,7 @@
     }
   ],
   "createdAt": "2026-09-08T10:02:05.009Z",
-  "updatedAt": "2026-09-08T13:50:54.015Z",
+  "updatedAt": "2026-09-08T13:56:53.054Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -294,7 +316,7 @@
   "sessionInfo": [
     {
       "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
-      "createdAt": "2026-09-08T13:50:53.987Z"
+      "createdAt": "2026-09-08T13:56:53.032Z"
     }
   ]
 }

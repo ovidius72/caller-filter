@@ -10,6 +10,7 @@ license = "UNLICENSED"
 
 [workspace.dependencies]
 phonenumber = "0.3"
+uniffi = { version = "0.32", features = ["cli"] }
 
 [profile.release]
 # The iOS Call Directory and SMS filter extensions run under tight memory

@@ -55,3 +55,12 @@ captures/
 *.keystore
 *.jks
 secrets.properties
+
+# Build outputs from tools/build-ios.sh and tools/build-android.sh
+/build/
+/bindings/
+apps/android/app/generated/
+apps/ios/dd/
+
+# Xcode project is generated from project.yml by xcodegen — regenerate, don't edit
+apps/ios/*.xcodeproj/

@@ -16,6 +16,8 @@
 //! This crate is pure logic with no platform dependency, so it is fully
 //! testable on the host with no device or simulator.
 
+uniffi::setup_scaffolding!();
+
 /// How the engine was asked to treat a call or message.
 ///
 /// Android evaluates this live when a call arrives. iOS SMS evaluates it live
@@ -57,8 +59,24 @@ impl Default for EntryLimit {
 /// Placeholder so the crate builds and its test harness runs from day one.
 /// The real surface (normalize / evaluate / geocode / expand / explain) arrives
 /// in F002 once this scaffolding is proven end to end from Swift and Kotlin.
-pub fn version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
+///
+/// Exported across the FFI purely so both apps can prove they are talking to
+/// this crate rather than to a stale copy.
+///
+/// Named `core_version` rather than `version` deliberately: the Swift bindings
+/// land in the same module as the app code, and a bare `version` collides with
+/// `NSObject.version` inside any class that inherits from it — which both iOS
+/// extensions do.
+#[uniffi::export]
+pub fn core_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// The default entry limit, exposed so the iOS shell can seed its first attempt.
+/// It must still back off when the device says the list is too long.
+#[uniffi::export]
+pub fn default_entry_limit() -> u32 {
+    EntryLimit::default().0
 }
 
 #[cfg(test)]
@@ -67,7 +85,7 @@ mod tests {
 
     #[test]
     fn version_is_reported() {
-        assert!(!version().is_empty());
+        assert!(!core_version().is_empty());
     }
 
     #[test]

@@ -1,0 +1,86 @@
+name: CallerFilter
+options:
+  bundleIdPrefix: com.antoniopantano.callerfilter
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: UY66NT5LGF
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    # Xcode 26 Debug builds put target code in a separate __preview.dylib, which
+    # leaves the extension's principal class out of the .appex and makes the
+    # extension fail to enable with a generic error. Measured in F001/T001.
+    ENABLE_DEBUG_DYLIB: NO
+
+packages: {}
+
+targets:
+  CallerFilter:
+    type: application
+    platform: iOS
+    sources:
+      - CallerFilter
+      - path: ../../bindings/swift/callerfilter_core.swift
+        group: Generated
+    dependencies:
+      - target: CallDirectoryExtension
+        embed: true
+      - target: MessageFilterExtension
+        embed: true
+      - framework: ../../build/ios/callerfilter_core.xcframework
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.antoniopantano.callerfilter
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+
+  # Bundle identifier is load-bearing: the app passes it to
+  # CXCallDirectoryManager.reloadExtension(withIdentifier:), so renaming it later
+  # means changing code.
+  CallDirectoryExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - CallDirectoryExtension
+      - path: ../../bindings/swift/callerfilter_core.swift
+        group: Generated
+    dependencies:
+      - framework: ../../build/ios/callerfilter_core.xcframework
+        embed: false
+    info:
+      path: CallDirectoryExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Caller Filter
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.callkit.call-directory
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).CallDirectoryHandler
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.antoniopantano.callerfilter.calldirectory
+
+  MessageFilterExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - MessageFilterExtension
+      - path: ../../bindings/swift/callerfilter_core.swift
+        group: Generated
+    dependencies:
+      - framework: ../../build/ios/callerfilter_core.xcframework
+        embed: false
+    info:
+      path: MessageFilterExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Caller Filter
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.identitylookup.message-filter
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).MessageFilterExtension
+          NSExtensionAttributes:
+            ILMessageFilterExtensionNetworkURL: ""
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.antoniopantano.callerfilter.messagefilter
