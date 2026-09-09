@@ -12,14 +12,21 @@
   "summary": "git init, three projects, generated bindings, a build that runs itself",
   "description": "CURRENT STATE: /Users/antonio/projects/caller-filter is EMPTY and NOT a git repository. `git init` happens in this phase. Depends on F007 (tools installed) and follows F001 (platform facts established).\n\nReplaces the phase originally placed in F006 (store distribution), which was the wrong home — setting up a project and shipping it to stores are different jobs.\n\nREPOSITORY LAYOUT — the decision this phase must make. One repo holding the Rust core plus both apps, or separate repos. Not cosmetic: it determines how UniFFI bindings and packaged datasets flow from the core to the two apps. One repo keeps them in step and makes CI simple; separate repos need a publishing step and let the apps sit on a stale core silently.\n\nPROJECT SKELETONS:\n- Rust core crate, buildable and testable on the HOST from day one. F002 is pure logic with no platform dependency, so its tests must run with no device or simulator — that is the fast feedback loop and it should stay fast.\n- Xcode project with THREE targets: host app, Call Directory extension (P008), SMS filter extension (P009). Both extensions link the same core and run under tight memory limits.\n- Android Gradle project linking the same core through JNI via cargo-ndk.\n\nPROVE IT END TO END: a trivial core function called successfully from Swift AND from Kotlin. That one call validates the toolchain, all seven targets, the linking and the binding generation together — and it should pass before any real core work starts in F002.\n\nCI: build the core per target, run core tests on the host, generate bindings, build both apps, run F003's dataset converter and FAIL THE BUILD on validation errors. A silently truncated dataset makes rules stop matching with no error anywhere, which is close to undebuggable in the field. Explicitly NOT automated: F001/T001's measurement harness needs real hardware and human observation.\n\nCONVENTIONS: formatting, linting, test layout, dependency policy — including how upstream libphonenumber data updates are pulled in, since that data is an input to F003's converter and not a checked-in artifact.\n\nBEHAVIOURS TO PRESERVE: generated bindings and packaged datasets are build outputs, never committed. Track the core's binary size per target, since an oversized core makes the iOS extensions unviable regardless of correctness.",
   "descriptionUpdatedAt": "2026-09-08T10:02:05.020Z",
-  "notes": "",
+  "notes": "**Handoff context update:**\nT007 (repository) and T008 (both app skeletons linking the core) are done and committed on main as c1b0a3b and 5f62074. The Rust core builds for all seven targets, UniFFI generates Swift and Kotlin bindings during the build, and the iOS app running on the user's iPhone displays values read across the FFI from Rust — Swift genuinely calls the core. The Android APK builds and carries the core for all three ABIs.\n\n**Remaining work:**\nT009 — CI and shared conventions. Build the core per target, run its tests on the host, generate bindings, build both apps, fail the build on dataset validation errors once F003 exists, agree formatting/linting/test layout/dependency policy, and track core binary size per target. Consider a lint enforcing Guidelines §1. Do not automate F001/T001's measurement harness. Also open: the Kotlin call has only been proven at compile time — no Android device or emulator is available to run it.",
   "goals": [],
   "nonGoals": [],
   "dependencies": [],
   "dependsOn": [],
   "risks": [],
   "openQuestions": [],
-  "decisions": [],
+  "decisions": [
+    "One repository holding the core and both apps, because the apps are thin shells and a core change plus its regenerated bindings should land in one commit",
+    "Nothing generated is committed — bindings, XCFramework, cargo-ndk output and the xcodegen-produced .xcodeproj are all gitignored",
+    "AGP 9 on Gradle 9 with the separate kotlin.android plugin omitted, because the installed JDK 26 cannot be used by AGP 8.x or Gradle 8.x and the user declined installing an older JDK",
+    "ENABLE_DEBUG_DYLIB=NO set project-wide, because Xcode 26 Debug builds leave the extension principal class out of the .appex and the extension then fails to enable",
+    "Kotlin bindings generated from the host library rather than the Android .so, because the release profile strips and stripping removes UniFFI metadata from ELF objects while Mach-O retains it",
+    "The exported function is core_version rather than version, because a bare version collides with NSObject.version inside any class inheriting from it, which both iOS extensions do"
+  ],
   "acceptedDecisions": [],
   "completionCriteria": [],
   "taskIds": [
@@ -127,9 +134,9 @@
       "priority": 2,
       "shortName": "xcode-and-android-project-skel",
       "title": "Xcode and Android project skeletons linking the core",
-      "status": "in-progress",
-      "description": "Stand up both app projects so they compile against the Rust core through UniFFI. Depends on the repository task, and on F001/T002 having established what shape the Android app actually needs to be.\n\nCURRENT STATE: nothing exists. Xcode with iOS SDK 26.2 is present; the Android SDK arrives with F007.\n\nXCODE PROJECT — THREE TARGETS, not one:\n- Host app (SwiftUI).\n- Call Directory extension (CXCallDirectoryProvider) — see P008(F004).\n- SMS filter extension (ILMessageFilterExtension) — see P009(F004).\nBoth extensions link the same core. They run under tight memory limits, so treat the core's binary size and load cost as a build output watched from the first day rather than something discovered when an extension gets killed in the field.\n\nSIGNING, CURRENT CONSTRAINT: no paid Apple Developer account. Free personal-team provisioning, 7-day certificates, own devices only, NO App Groups. Set the skeleton up so it builds under those limits. The real app WILL need an App Group to share rules between host and extensions (R2, R4), so a paid account is a hard prerequisite before F004 is functional. If F007 found that free teams cannot run extensions at all, stop and report.\n\nANDROID PROJECT: Gradle project linking the same core through JNI, with cargo-ndk producing the per-ABI libraries. CHECK F001/T002'S FINDING FIRST — if blocking an SMS requires becoming the default SMS app, the Android app is a materially different shape and that is a product decision, not something to work around while scaffolding.\n\nUNIFFI BINDINGS ARE GENERATED BY THE BUILD, NEVER COMMITTED. The single most important convention here. Checked-in bindings drift from the core in silence and surface as a runtime failure on one platform only. Wire generation into both builds now, while the projects are empty and it is easy.\n\nPROVE IT WORKS END TO END: a trivial core function called successfully from Swift and from Kotlin. That one call validates the toolchain, all seven targets, the linking and the binding generation together. Do this before any real core work in F002.\n\nDO NOT: implement filtering logic here — that is F002, and Guidelines §3 keeps it in the core regardless.",
-      "descriptionUpdatedAt": "2026-09-08T10:02:27.055Z",
+      "status": "done",
+      "description": "Stand up both app projects so they compile against the Rust core through UniFFI. Depends on the repository task, and on F001/T002 having established what shape the Android app actually needs to be.\n\nCURRENT STATE: nothing exists. Xcode with iOS SDK 26.2 is present; the Android SDK arrives with F007.\n\nXCODE PROJECT — THREE TARGETS, not one:\n- Host app (SwiftUI).\n- Call Directory extension (CXCallDirectoryProvider) — see P008(F004).\n- SMS filter extension (ILMessageFilterExtension) — see P009(F004).\nBoth extensions link the same core. They run under tight memory limits, so treat the core's binary size and load cost as a build output watched from the first day rather than something discovered when an extension gets killed in the field.\n\nSIGNING, CURRENT CONSTRAINT: no paid Apple Developer account. Free personal-team provisioning, 7-day certificates, own devices only, NO App Groups. Set the skeleton up so it builds under those limits. The real app WILL need an App Group to share rules between host and extensions (R2, R4), so a paid account is a hard prerequisite before F004 is functional. If F007 found that free teams cannot run extensions at all, stop and report.\n\nANDROID PROJECT: Gradle project linking the same core through JNI, with cargo-ndk producing the per-ABI libraries. CHECK F001/T002'S FINDING FIRST — if blocking an SMS requires becoming the default SMS app, the Android app is a materially different shape and that is a product decision, not something to work around while scaffolding.\n\nUNIFFI BINDINGS ARE GENERATED BY THE BUILD, NEVER COMMITTED. The single most important convention here. Checked-in bindings drift from the core in silence and surface as a runtime failure on one platform only. Wire generation into both builds now, while the projects are empty and it is easy.\n\nPROVE IT WORKS END TO END: a trivial core function called successfully from Swift and from Kotlin. That one call validates the toolchain, all seven targets, the linking and the binding generation together. Do this before any real core work in F002.\n\nDO NOT: implement filtering logic here — that is F002, and Guidelines §3 keeps it in the core regardless.\n\n---\n**Completion summary:**\nDONE 2026-09-08. Both apps build against the shared Rust core through UniFFI. Commit 5f62074.\n\nVERIFIED END TO END ON iOS: the app running on the user's iPhone displays \"core 0.1.0\" and \"iOS entry limit 1800000\", both read across the FFI from the Rust core. Swift is genuinely calling Rust, not a stub.\n\nPARTIALLY VERIFIED ON ANDROID: the app compiles against the generated Kotlin bindings — which fails if the API surface does not match — and the APK carries libcallerfilter_core.so for all three ABIs plus JNA's libjnidispatch.so. NOT executed: no Android device or emulator is available, so the Kotlin call is proven at compile and packaging time only. Tracked as an open checklist item; run it when Android hardware or an emulator image exists.\n\nWHAT EXISTS NOW:\n- apps/ios/project.yml — xcodegen source of truth for three targets: CallerFilter (app), CallDirectoryExtension, MessageFilterExtension. The .xcodeproj is generated and gitignored; edit the yml, not the project.\n- apps/android/ — Gradle project, AGP 9 on Gradle 9.\n- tools/build-ios.sh — builds three iOS targets, lipos the simulator slices, generates Swift bindings, packages an XCFramework, prints core size per slice.\n- tools/build-android.sh — cargo-ndk for three ABIs, generates Kotlin bindings, installs/locates the NDK, prints size per ABI.\n\nBUNDLE IDENTIFIERS ARE LOAD-BEARING, chosen deliberately:\n  com.antoniopantano.callerfilter\n  com.antoniopantano.callerfilter.calldirectory\n  com.antoniopantano.callerfilter.messagefilter\nThe app passes the Call Directory one to CXCallDirectoryManager.reloadExtension(withIdentifier:), so renaming it later means changing code.\n\nMEASURED SIZES:\n- iOS linked binaries: app 528K, each extension 492K, whole .app 1.6M.\n- Android core: 232K armeabi-v7a, 332K arm64-v8a, 364K x86_64. Debug APK 5.4M.\n- The 49M static .a is PRE-LINK NOISE, not a real cost — verified by rebuilding without the phonenumber dependency and getting the same 49M. Judge size from linked binaries only.\n\nFIVE PROBLEMS SOLVED, each now fixed in the build files with a comment explaining why:\n1. ENABLE_DEBUG_DYLIB=NO is set project-wide. Xcode 26 Debug builds put target code in a separate __preview.dylib, leaving the extension's principal class out of the .appex so it fails to enable with a generic error. Carried forward from T001.\n2. `version` was renamed to `core_version` in Rust. The Swift bindings land in the same module as app code, and a bare `version` collides with NSObject.version inside any class inheriting from it — which both extensions do. Renaming in the core stops it recurring anywhere.\n3. Kotlin bindings are generated from the HOST library, not the Android .so. The release profile strips, and stripping removes the metadata UniFFI reads from an ELF object. Mach-O retains it, which is why the iOS build can read its own artifact. Bindings describe the crate's interface, not the target, so the host library is a correct source.\n4. TOOLCHAIN VERSION BIND: the installed JDK is 26 (Homebrew openjdk). AGP 8.x cannot parse it and Gradle 8.x does not support it, so the project uses AGP 9 on Gradle 9. AGP 9 bundles Kotlin, so the separate org.jetbrains.kotlin.android plugin must be omitted or it fails with \"extension already registered with name 'kotlin'\". The user declined installing an older JDK; this combination works without one.\n5. Generated Kotlin sources must go on the KOTLIN source set (sourceSets[\"main\"].kotlin.srcDir), not the java one. Under AGP 9 java.srcDir does not reach the Kotlin compiler and the bindings appear as unresolved references.\n\nCONVENTION ENFORCED: generated bindings, the XCFramework, cargo-ndk output and the generated .xcodeproj are all gitignored. Nothing generated is committed.\n\nNOT DONE HERE, by design: CI and shared conventions (T009). No filtering logic — that is F002, and Guidelines §3 keeps it in the core regardless. The extensions contain only a call to core_version() to prove linkage.\n\nSIGNING NOTE: builds under the free personal team (UY66NT5LGF) with no App Group, as required. F004 will need an App Group to share rules between the app and its extensions, and that needs a paid account — still a hard prerequisite before the real iOS app can work.",
+      "descriptionUpdatedAt": "2026-09-08T14:41:07.098Z",
       "notes": "",
       "statusLog": [
         {
@@ -139,6 +146,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-002-in-progress-done",
+          "date": "2026-09-08T14:41:07.097Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "DONE 2026-09-08. Both apps build against the shared Rust core through UniFFI. Commit 5f62074.\n\nVERIFIED END TO END ON iOS: the app running on the user's iPhone displays \"core 0.1.0\" and \"iOS entry limit 1800000\", both read across the FFI from the Rust core. Swift is genuinely calling Rust, not a stub.\n\nPARTIALLY VERIFIED ON ANDROID: the app compiles against the generated Kotlin bindings — which fails if the API surface does not match — and the APK carries libcallerfilter_core.so for all three ABIs plus JNA's libjnidispatch.so. NOT executed: no Android device or emulator is available, so the Kotlin call is proven at compile and packaging time only. Tracked as an open checklist item; run it when Android hardware or an emulator image exists.\n\nWHAT EXISTS NOW:\n- apps/ios/project.yml — xcodegen source of truth for three targets: CallerFilter (app), CallDirectoryExtension, MessageFilterExtension. The .xcodeproj is generated and gitignored; edit the yml, not the project.\n- apps/android/ — Gradle project, AGP 9 on Gradle 9.\n- tools/build-ios.sh — builds three iOS targets, lipos the simulator slices, generates Swift bindings, packages an XCFramework, prints core size per slice.\n- tools/build-android.sh — cargo-ndk for three ABIs, generates Kotlin bindings, installs/locates the NDK, prints size per ABI.\n\nBUNDLE IDENTIFIERS ARE LOAD-BEARING, chosen deliberately:\n  com.antoniopantano.callerfilter\n  com.antoniopantano.callerfilter.calldirectory\n  com.antoniopantano.callerfilter.messagefilter\nThe app passes the Call Directory one to CXCallDirectoryManager.reloadExtension(withIdentifier:), so renaming it later means changing code.\n\nMEASURED SIZES:\n- iOS linked binaries: app 528K, each extension 492K, whole .app 1.6M.\n- Android core: 232K armeabi-v7a, 332K arm64-v8a, 364K x86_64. Debug APK 5.4M.\n- The 49M static .a is PRE-LINK NOISE, not a real cost — verified by rebuilding without the phonenumber dependency and getting the same 49M. Judge size from linked binaries only.\n\nFIVE PROBLEMS SOLVED, each now fixed in the build files with a comment explaining why:\n1. ENABLE_DEBUG_DYLIB=NO is set project-wide. Xcode 26 Debug builds put target code in a separate __preview.dylib, leaving the extension's principal class out of the .appex so it fails to enable with a generic error. Carried forward from T001.\n2. `version` was renamed to `core_version` in Rust. The Swift bindings land in the same module as app code, and a bare `version` collides with NSObject.version inside any class inheriting from it — which both extensions do. Renaming in the core stops it recurring anywhere.\n3. Kotlin bindings are generated from the HOST library, not the Android .so. The release profile strips, and stripping removes the metadata UniFFI reads from an ELF object. Mach-O retains it, which is why the iOS build can read its own artifact. Bindings describe the crate's interface, not the target, so the host library is a correct source.\n4. TOOLCHAIN VERSION BIND: the installed JDK is 26 (Homebrew openjdk). AGP 8.x cannot parse it and Gradle 8.x does not support it, so the project uses AGP 9 on Gradle 9. AGP 9 bundles Kotlin, so the separate org.jetbrains.kotlin.android plugin must be omitted or it fails with \"extension already registered with name 'kotlin'\". The user declined installing an older JDK; this combination works without one.\n5. Generated Kotlin sources must go on the KOTLIN source set (sourceSets[\"main\"].kotlin.srcDir), not the java one. Under AGP 9 java.srcDir does not reach the Kotlin compiler and the bindings appear as unresolved references.\n\nCONVENTION ENFORCED: generated bindings, the XCFramework, cargo-ndk output and the generated .xcodeproj are all gitignored. Nothing generated is committed.\n\nNOT DONE HERE, by design: CI and shared conventions (T009). No filtering logic — that is F002, and Guidelines §3 keeps it in the core regardless. The extensions contain only a call to core_version() to prove linkage.\n\nSIGNING NOTE: builds under the free personal team (UY66NT5LGF) with no App Group, as required. F004 will need an App Group to share rules between the app and its extensions, and that needs a paid account — still a hard prerequisite before the real iOS app can work."
         }
       ],
       "decisions": [],
@@ -148,54 +163,60 @@
           "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-001-check-f001-t002-s-android-sms-finding-before-scaffolding-the-android-project",
           "number": 1,
           "title": "Check F001/T002's Android SMS finding before scaffolding the Android project",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-002-create-xcode-project-with-three-targets-host-app-call-directory-extension-sms-filter-extension",
           "number": 2,
           "title": "Create Xcode project with three targets: host app, Call Directory extension, SMS filter extension",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-003-configure-free-personal-team-signing-with-no-app-group-stop-and-report-if-extensions-need-a-paid-account",
           "number": 3,
           "title": "Configure free personal-team signing with no App Group; stop and report if extensions need a paid account",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-004-create-the-gradle-android-project",
           "number": 4,
           "title": "Create the Gradle Android project",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-005-wire-cargo-ndk-to-produce-per-abi-core-libraries",
           "number": 5,
           "title": "Wire cargo-ndk to produce per-ABI core libraries",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-006-wire-uniffi-binding-generation-into-both-builds-never-commit-the-output",
           "number": 6,
           "title": "Wire UniFFI binding generation into BOTH builds; never commit the output",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-007-call-a-trivial-core-function-from-swift-and-confirm-it-works",
           "number": 7,
           "title": "Call a trivial core function from Swift and confirm it works",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-008-call-the-same-core-function-from-kotlin-and-confirm-it-works",
           "number": 8,
           "title": "Call the same core function from Kotlin and confirm it works",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-009-record-the-core-s-binary-size-and-load-cost-as-a-tracked-build-output",
           "number": 9,
           "title": "Record the core's binary size and load cost as a tracked build output",
+          "checked": true
+        },
+        {
+          "id": "3f7d89d1-d111-4b36-8af7-56ea31fec687-check-010-open-run-the-kotlin-call-on-a-real-android-device-or-emulator-compile-time-only-so-far-no-android-hardware-available",
+          "number": 10,
+          "title": "OPEN: run the Kotlin call on a real Android device or emulator — compile-time only so far, no Android hardware available",
           "checked": false
         }
       ],
@@ -204,9 +225,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-08T13:56:53.054Z",
-      "completedAt": "",
+      "completedAt": "2026-09-08T14:41:07.097Z",
       "createdAt": "2026-09-08T10:02:27.044Z",
-      "updatedAt": "2026-09-08T13:56:53.054Z",
+      "updatedAt": "2026-09-08T14:41:07.097Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
@@ -222,11 +243,20 @@
       "priority": 3,
       "shortName": "ci-and-shared-conventions",
       "title": "CI and shared conventions",
-      "status": "planned",
+      "status": "in-progress",
       "description": "Make the build run itself, and settle the conventions once so they are not argued per pull request. Depends on the project skeletons task.\n\nCI SHAPE:\n- Build the Rust core for every target: three iOS, three Android, plus host.\n- Run the core's tests on the HOST. F002 is pure logic with no platform dependency, so its tests need no device or simulator — this is the fast feedback loop and it should stay fast.\n- Generate UniFFI bindings (never committed — see the skeletons task).\n- Build both apps.\n- Run F003's dataset converter and FAIL THE BUILD on its validation errors. A silently truncated dataset makes rules stop matching with no error anywhere in the system, which is close to undebuggable in the field.\n\nEXPLICITLY NOT AUTOMATED: F001/T001's measurement harness needs a real iPhone and human observation of memory and kill behaviour. Do not try to run it in CI.\n\nSHARED CONVENTIONS, agreed here and written down:\n- Formatting and linting for Rust, Swift and Kotlin.\n- Test layout and naming. Note where the weight belongs: P002(F002) says the rule model carries the heaviest coverage in the project, because a bug there is a bug on every platform simultaneously.\n- Dependency policy, including how libphonenumber upstream data updates are pulled in — that data is an input to F003's converter, not a checked-in artifact.\n\nA CONVENTION WORTH ENFORCING MECHANICALLY: Project Guidelines §1 forbids country codes, number lengths, prefixes and place names in source files. That is checkable — a lint or test that greps for suspicious literals in the core would catch the most likely violation of the project's central rule. Consider adding it rather than trusting review.\n\nALSO: track the core's binary size per target as a CI output. The iOS extensions run under tight memory limits and an oversized core makes them unviable regardless of correctness.",
       "descriptionUpdatedAt": "2026-09-08T10:02:38.906Z",
       "notes": "",
-      "statusLog": [],
+      "statusLog": [
+        {
+          "id": "381feef4-f303-49fb-b02a-02dfa21c90e8-check-001-planned-in-progress",
+          "date": "2026-09-09T06:03:56.294Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
       "decisions": [],
       "acceptedDecisions": [],
       "checklist": [
@@ -289,18 +319,121 @@
       "dependsOn": [],
       "pauseSnapshot": null,
       "pauseHistory": [],
-      "startedAt": "",
+      "startedAt": "2026-09-09T06:03:56.294Z",
       "completedAt": "",
       "createdAt": "2026-09-08T10:02:38.895Z",
-      "updatedAt": "2026-09-08T10:02:38.895Z",
-      "sessionInfo": []
+      "updatedAt": "2026-09-09T06:03:56.294Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
+          "createdAt": "2026-09-09T06:03:56.267Z"
+        }
+      ]
     }
   ],
   "createdAt": "2026-09-08T10:02:05.009Z",
-  "updatedAt": "2026-09-08T13:56:53.054Z",
-  "handoff": "",
-  "handoffUpdatedAt": "",
-  "handoffAudit": null,
+  "updatedAt": "2026-09-09T06:03:56.294Z",
+  "handoff": "# Repository and both app skeletons done; CI (T009) is next\n\nCreated at: 2026-09-08\nUpdated at: 2026-09-08\nReason: T007 and T008 are complete and committed. Handing off before T009 so the traps already paid for are not rediscovered — every one of them recurs in CI.\n\n## Current focus\n\n**P018(F008)/T009 — CI and shared conventions.** The only task left in this phase. T007 and T008 are done, nothing is half-finished, the tree is clean.\n\n## What was being done\n\n- **T007** — repository created on `main`. One-repo layout, Cargo workspace, `callerfilter-core` crate, `.gitignore` excluding every generated artifact, README recording the layout decision. Commit `c1b0a3b`.\n- **T008** — both app skeletons linking the core through UniFFI. Commit `5f62074`.\n  - iOS: three targets (app, Call Directory extension, message filter extension). Built Release, installed on the user's iPhone, **verified at runtime** — it displays `core 0.1.0` and `iOS entry limit 1800000`, both read across the FFI from Rust.\n  - Android: AGP 9 Gradle project. APK builds and carries `libcallerfilter_core.so` for all three ABIs. **Never executed** — no Android device or emulator.\n  - `tools/build-ios.sh` and `tools/build-android.sh` perform the whole per-platform pipeline including binding generation and size reporting.\n\n## How to resume\n\nFirst action: `cd /Users/antonio/projects/caller-filter && cargo test` — expect 2 passing tests, no device. Confirms the tree is intact.\n\nThen read Blockers before writing any CI, and export these — they are in no shell profile:\n\n```sh\nexport ANDROID_HOME=/opt/homebrew/share/android-commandlinetools\nexport ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865\nexport JAVA_HOME=/opt/homebrew/opt/openjdk     # JDK 26\n```\n\nCommands that work today:\n\n```sh\ncargo test                                  # host, 2 tests, no device\n./tools/build-ios.sh                        # 3 targets, lipo, bindings, XCFramework\n./tools/build-android.sh                    # cargo-ndk 3 ABIs, Kotlin bindings\ncd apps/ios && xcodegen generate && \\\n  xcodebuild -scheme CallerFilter -configuration Release -allowProvisioningUpdates build\ncd apps/android && gradle :app:assembleDebug   # system gradle 9.7.1, NOT a wrapper\n```\n\nInstalled: Rust 1.96 + 6 mobile targets, Android SDK (platform 36, sources 36, build-tools 36.0.0, NDK 29), cargo-ndk 4.1.2, xcodegen 2.46, gradle 9.7.1, Xcode 26.3.\n\n## Files touched\n\n```\ncore/src/lib.rs                     core_version, default_entry_limit, EntryLimit, Decision\ncore/src/bin/uniffi-bindgen.rs      binding generator\nCargo.toml, core/Cargo.toml\napps/ios/project.yml                xcodegen source of truth — edit this, never the .xcodeproj\napps/ios/CallerFilter/App.swift\napps/ios/CallDirectoryExtension/CallDirectoryHandler.swift\napps/ios/MessageFilterExtension/MessageFilterExtension.swift\napps/android/build.gradle.kts\napps/android/app/build.gradle.kts\napps/android/app/src/main/AndroidManifest.xml\napps/android/app/src/main/java/com/antoniopantano/callerfilter/MainActivity.kt\ntools/build-ios.sh, tools/build-android.sh\n.gitignore, README.md\n```\n\nGenerated and gitignored: `bindings/`, `build/`, `apps/android/app/generated/`, `apps/ios/dd/`, `apps/ios/*.xcodeproj/`.\n\n## Blockers\n\nTraps already paid for — do not rediscover these:\n\n1. **`ENABLE_DEBUG_DYLIB=NO`** is set project-wide in `apps/ios/project.yml`. Xcode 26 Debug builds put target code in a separate `__preview.dylib`, leaving the extension's principal class out of the `.appex` so it fails to enable with a generic error. CI must build iOS Release, or keep this flag.\n2. **Kotlin bindings come from the HOST library**, not the Android `.so`. The release profile strips, and stripping removes UniFFI's metadata from an ELF object; Mach-O keeps it, which is why iOS reads its own artifact. Comment is in `tools/build-android.sh`.\n3. **Toolchain version bind.** Installed JDK is 26. AGP 8.x cannot parse that version and Gradle 8.x does not support it, so the project uses AGP 9 + Gradle 9. AGP 9 bundles Kotlin, so `org.jetbrains.kotlin.android` must stay omitted or the build fails with \"extension already registered with name 'kotlin'\". CI must pin a JDK deliberately — the user declined installing an older one.\n4. **Generated Kotlin goes on the `kotlin` source set**, not `java`. Under AGP 9, `java.srcDir` does not reach the Kotlin compiler and bindings appear as unresolved references.\n5. **`sdkmanager` silently no-ops without `--sdk_root`** — exits 0, installs nothing. Also the platform package is `platforms;android-37.0` with the `.0` while sources are `sources;android-37`; a regex on `android-[0-9]+` truncates it.\n\nReal risks:\n\n- **A paid Apple Developer account is a hard prerequisite before F004 works.** The real app needs an App Group to share rules between host and extensions; free teams cannot have one. Not needed for T009.\n- Free personal-team profiles (team **UY66NT5LGF**) expire 7 days from 2026-09-08. A rebuild re-signs. Device: iPhone 13, `00008110-001208843C32801E`, iOS 26.6.1.\n- No Android hardware, so the Kotlin runtime path stays unproven.\n- The AGP 9 / Gradle 9 / JDK 26 combination is unusual; CI must pin it explicitly.\n\n## Next steps\n\nT009 must:\n\n- Build the core for all seven targets; run its tests on the host — pure logic, no device, keep this loop fast.\n- Generate bindings during the build. Never commit them.\n- Build both apps.\n- Run the dataset converter once F003 exists and fail the build on validation errors. A silently truncated dataset makes rules stop matching with no error anywhere.\n- Agree formatting, linting, test layout, dependency policy.\n- Track core binary size per target as a CI output.\n- Consider a lint catching hardcoded country codes, lengths or place names in the core — Guidelines §1 is mechanically checkable.\n- Do **not** automate F001/T001's measurement harness; it needs real hardware and human observation.\n\nBeyond this phase, F002 (the rule engine) is next. Two things waiting there:\n\n- `EntryLimit::default()` is 1,800,000, near the measured ~2,000,000 cap. Deliberate — the load cost is a one-off background cost paid at enable/reload, never at call time. It must stay configuration and must never be shown to the user. The shell backs off on CallKit error 5.\n- R2's \"digits a user must pin\" figures (226/244 countries need ≤4 for mobile) were computed against the wrong 1,000,000 assumption. They are pessimistic and should be recomputed against ~2,000,000 — more rules will fit than the plan currently claims.\n\n## Recent decisions\n\n- **One repository** holding core and both apps. The apps are thin shells, all logic is in the core, so the core changes far more often and a core change plus regenerated bindings should land in one commit. Rejected: separate repos, which need a publishing step and let an app sit silently on a stale core.\n- **Nothing generated is committed.** Bindings drift from the core in silence and fail at runtime on one platform only; a committed dataset defeats over-the-air versioning.\n- **Release profile tuned for size** (`opt-level=\"z\"`, LTO, strip, panic=abort) because the iOS extensions run under tight memory limits. Note strip is exactly what breaks ELF binding generation — blocker 2.\n- **`core_version`, not `version`.** A bare `version` collides with `NSObject.version` inside any class inheriting from it, which both iOS extensions do. Renamed in Rust so it cannot recur anywhere.\n- **Extension bundle identifiers are load-bearing.** The app passes `com.antoniopantano.callerfilter.calldirectory` to `reloadExtension(withIdentifier:)`, so renaming means changing code.\n- **Judge size from linked binaries only.** iOS app 528K, each extension 492K, whole `.app` 1.6M; Android core 232K–364K per ABI. The 49M static `.a` is pre-link noise — confirmed by rebuilding without the phonenumber dependency and getting the same 49M.\n- Rejected: installing an older JDK (user declined), committing bindings to skip a build step, automating the measurement harness.\n\n<!-- agent-plan:handoff-audit:start -->\n## Operational completeness audit (v1)\n\n### Exact focus and resume point\n**Status:** captured\nPhase P018(F008) with T007 and T008 complete and committed; T009 (CI and shared conventions) is the only remaining task. Nothing is half-finished and the working tree is clean on branch main at 5f62074.\n\n### First resume action\n**Status:** captured\ncd /Users/antonio/projects/caller-filter && cargo test — expect 2 passing tests with no device, confirming the tree is intact before changing anything. Then read the Blockers section, since every trap there recurs in CI.\n\n### Completed work\n**Status:** captured\nT007: repository on main, one-repo layout, Cargo workspace, callerfilter-core crate, .gitignore excluding generated artifacts, README recording the layout decision (c1b0a3b). T008: iOS project with three targets and Android Gradle project both linking the core through UniFFI, plus tools/build-ios.sh and tools/build-android.sh performing the full per-platform pipeline (5f62074).\n\n### Partial work\n**Status:** captured\nThe Android side is built and packaged but never executed: the Kotlin call to the core is proven at compile and packaging time only because no Android device or emulator is available. Tracked as an open checklist item on T008. The iOS equivalent is fully verified at runtime on the user's iPhone.\n\n### Remaining work\n**Status:** captured\nT009: build the core for all seven targets, run its tests on the host, generate bindings during the build, build both apps, fail the build on dataset validation errors once F003 exists, agree formatting/linting/test layout/dependency policy, track core binary size per target, and consider a lint enforcing Guidelines §1. Explicitly excluded: automating F001/T001's measurement harness, which needs real hardware and human observation.\n\n### Decisions and rationale\n**Status:** captured\nOne repository (apps are thin shells, core changes most often, bindings must land with the core change). Nothing generated is committed (bindings drift silently and fail at runtime on one platform; committed datasets defeat over-the-air versioning). Release profile tuned for size because iOS extensions run under tight memory limits. core_version rather than version because a bare version collides with NSObject.version inside extension classes. Kotlin bindings from the host library because stripping removes UniFFI metadata from ELF but not Mach-O. AGP 9 on Gradle 9 with kotlin.android omitted, forced by the installed JDK 26.\n\n### Rejected alternatives\n**Status:** captured\nSeparate repositories (needs a publishing step and lets an app sit silently on a stale core). Installing an older JDK (user declined; solved with AGP 9 + Gradle 9). Committing bindings to avoid a build step (the exact failure mode the gitignore prevents). Automating the T001 measurement harness (needs real hardware and human observation).\n\n### Files and symbols\n**Status:** captured\ncore/src/lib.rs (core_version, default_entry_limit, EntryLimit, Decision), core/src/bin/uniffi-bindgen.rs, Cargo.toml, core/Cargo.toml, apps/ios/project.yml, apps/ios/CallerFilter/App.swift, apps/ios/CallDirectoryExtension/CallDirectoryHandler.swift, apps/ios/MessageFilterExtension/MessageFilterExtension.swift, apps/android/build.gradle.kts, apps/android/app/build.gradle.kts, apps/android/app/src/main/AndroidManifest.xml, apps/android/app/src/main/java/com/antoniopantano/callerfilter/MainActivity.kt, tools/build-ios.sh, tools/build-android.sh, .gitignore, README.md.\n\n### Branch and worktree\n**Status:** captured\nBranch main in /Users/antonio/projects/caller-filter. Two commits: c1b0a3b (repository and core) and 5f62074 (app skeletons). Working tree clean, no worktrees, no remote configured.\n\n### Commands and tools\n**Status:** captured\ncargo test (host, 2 tests). ./tools/build-ios.sh (three iOS targets, lipo, Swift bindings, XCFramework, size report). ./tools/build-android.sh (cargo-ndk three ABIs, Kotlin bindings, size report). cd apps/ios && xcodegen generate then xcodebuild -scheme CallerFilter -configuration Release -allowProvisioningUpdates build. cd apps/android && gradle :app:assembleDebug using the system gradle 9.7.1, not a wrapper. xcrun devicectl device install app for deployment.\n\n### Completed verification\n**Status:** captured\ncargo test passes with 2 tests on the host with no device. iOS Release build succeeds for app and both extensions. Runtime verification on iPhone 13 / iOS 26.6.1: the app displays core 0.1.0 and iOS entry limit 1800000, both read across the FFI from Rust. Android APK builds and unzip confirms libcallerfilter_core.so present for arm64-v8a, armeabi-v7a and x86_64. Linked sizes measured: iOS app 528K, extensions 492K each, .app 1.6M; Android core 232K-364K per ABI.\n\n### Pending verification\n**Status:** captured\nThe Kotlin call has never executed — no Android device or emulator. Also unverified: whether the iOS Call Directory entry cap differs across devices or iOS versions (one device measured), and whether blocking and identification entries share a single cap on iOS.\n\n### Runtime limitations and workarounds\n**Status:** captured\nXcode 26 Debug builds place target code in a separate __preview.dylib, leaving the extension principal class out of the .appex so it fails to enable; worked around with ENABLE_DEBUG_DYLIB=NO project-wide, so CI must build iOS Release. Stripping removes UniFFI metadata from ELF objects, so Kotlin bindings are generated from the host Mach-O library instead of the Android .so. JDK 26 is unusable by AGP 8.x and Gradle 8.x, so the project uses AGP 9 on Gradle 9 with the kotlin.android plugin omitted. Under AGP 9 generated Kotlin must go on the kotlin source set, not java. sdkmanager silently no-ops without --sdk_root.\n\n### Blockers and risks\n**Status:** captured\nA paid Apple Developer account is a hard prerequisite before F004 works, because the real app needs an App Group to share rules between host and extensions and free teams cannot have one. Not needed for T009. Free personal-team profiles (team UY66NT5LGF) expire 7 days from 2026-09-08, so device work needs a rebuild to re-sign. No Android hardware means the Kotlin runtime path stays unproven. The AGP 9 / Gradle 9 / JDK 26 combination is unusual and CI must pin it deliberately.\n\n### User-visible behavior\n**Status:** captured\nThe iOS app on the user's iPhone shows 'Caller Filter', 'core 0.1.0' and 'iOS entry limit 1800000'. The Android app would show equivalent text but has not been run. Neither app filters anything yet — the extensions only call core_version() to prove linkage. No filtering logic exists; that is F002.\n\n### Operator actions\n**Status:** captured\nThe user enabled Developer Mode on the iPhone, trusted the developer certificate under Settings > General > VPN and Device Management, added their Apple ID to Xcode, and confirmed the running app's on-screen values. The user declined installing an older JDK. No operator action is required for T009.\n\n### Project-specific operating notes\n**Status:** captured\nANDROID_HOME, ANDROID_NDK_HOME and JAVA_HOME are not set in any shell profile and must be exported by CI and any new shell: ANDROID_HOME=/opt/homebrew/share/android-commandlinetools, ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865, JAVA_HOME=/opt/homebrew/opt/openjdk. Android uses the system gradle 9.7.1 directly; the wrapper was removed because generating it failed under JDK 26. The .xcodeproj is generated by xcodegen and gitignored — edit apps/ios/project.yml, never the project file. Judge core size from linked binaries only; the 49M static .a is pre-link noise, confirmed by rebuilding without the phonenumber dependency and getting the same figure.\n\n### Conversation-only facts\n**Status:** captured\nThe user asked for brevity and plain English, now recorded as Project Guidelines §5. The user chose 1.5M as a safe entry target before learning the load cost is background-only, then agreed the number should sit nearer the cap and never be exposed as a user setting. The user's phone is an iPhone 13 named 'iPhone di Antonio' and is in Italian, so system paths appear as Impostazioni > App > Telefono > Blocco chiamate e identificazione. Signing team is UY66NT5LGF; an earlier guess of BJ4HAAB9B3 was wrong, and the certificate id 8GT5G9FQ28 is easy to mistake for the team id.\n\n<!-- agent-plan:handoff-audit:end -->",
+  "handoffUpdatedAt": "2026-09-08T19:09:14.563Z",
+  "handoffAudit": {
+    "version": 1,
+    "entries": [
+      {
+        "category": "exact-focus-resume-point",
+        "status": "captured",
+        "detail": "Phase P018(F008) with T007 and T008 complete and committed; T009 (CI and shared conventions) is the only remaining task. Nothing is half-finished and the working tree is clean on branch main at 5f62074."
+      },
+      {
+        "category": "first-resume-action",
+        "status": "captured",
+        "detail": "cd /Users/antonio/projects/caller-filter && cargo test — expect 2 passing tests with no device, confirming the tree is intact before changing anything. Then read the Blockers section, since every trap there recurs in CI."
+      },
+      {
+        "category": "completed-work",
+        "status": "captured",
+        "detail": "T007: repository on main, one-repo layout, Cargo workspace, callerfilter-core crate, .gitignore excluding generated artifacts, README recording the layout decision (c1b0a3b). T008: iOS project with three targets and Android Gradle project both linking the core through UniFFI, plus tools/build-ios.sh and tools/build-android.sh performing the full per-platform pipeline (5f62074)."
+      },
+      {
+        "category": "partial-work",
+        "status": "captured",
+        "detail": "The Android side is built and packaged but never executed: the Kotlin call to the core is proven at compile and packaging time only because no Android device or emulator is available. Tracked as an open checklist item on T008. The iOS equivalent is fully verified at runtime on the user's iPhone."
+      },
+      {
+        "category": "remaining-work",
+        "status": "captured",
+        "detail": "T009: build the core for all seven targets, run its tests on the host, generate bindings during the build, build both apps, fail the build on dataset validation errors once F003 exists, agree formatting/linting/test layout/dependency policy, track core binary size per target, and consider a lint enforcing Guidelines §1. Explicitly excluded: automating F001/T001's measurement harness, which needs real hardware and human observation."
+      },
+      {
+        "category": "decisions-rationale",
+        "status": "captured",
+        "detail": "One repository (apps are thin shells, core changes most often, bindings must land with the core change). Nothing generated is committed (bindings drift silently and fail at runtime on one platform; committed datasets defeat over-the-air versioning). Release profile tuned for size because iOS extensions run under tight memory limits. core_version rather than version because a bare version collides with NSObject.version inside extension classes. Kotlin bindings from the host library because stripping removes UniFFI metadata from ELF but not Mach-O. AGP 9 on Gradle 9 with kotlin.android omitted, forced by the installed JDK 26."
+      },
+      {
+        "category": "rejected-alternatives",
+        "status": "captured",
+        "detail": "Separate repositories (needs a publishing step and lets an app sit silently on a stale core). Installing an older JDK (user declined; solved with AGP 9 + Gradle 9). Committing bindings to avoid a build step (the exact failure mode the gitignore prevents). Automating the T001 measurement harness (needs real hardware and human observation)."
+      },
+      {
+        "category": "files-symbols",
+        "status": "captured",
+        "detail": "core/src/lib.rs (core_version, default_entry_limit, EntryLimit, Decision), core/src/bin/uniffi-bindgen.rs, Cargo.toml, core/Cargo.toml, apps/ios/project.yml, apps/ios/CallerFilter/App.swift, apps/ios/CallDirectoryExtension/CallDirectoryHandler.swift, apps/ios/MessageFilterExtension/MessageFilterExtension.swift, apps/android/build.gradle.kts, apps/android/app/build.gradle.kts, apps/android/app/src/main/AndroidManifest.xml, apps/android/app/src/main/java/com/antoniopantano/callerfilter/MainActivity.kt, tools/build-ios.sh, tools/build-android.sh, .gitignore, README.md."
+      },
+      {
+        "category": "branch-worktree",
+        "status": "captured",
+        "detail": "Branch main in /Users/antonio/projects/caller-filter. Two commits: c1b0a3b (repository and core) and 5f62074 (app skeletons). Working tree clean, no worktrees, no remote configured."
+      },
+      {
+        "category": "commands-tools",
+        "status": "captured",
+        "detail": "cargo test (host, 2 tests). ./tools/build-ios.sh (three iOS targets, lipo, Swift bindings, XCFramework, size report). ./tools/build-android.sh (cargo-ndk three ABIs, Kotlin bindings, size report). cd apps/ios && xcodegen generate then xcodebuild -scheme CallerFilter -configuration Release -allowProvisioningUpdates build. cd apps/android && gradle :app:assembleDebug using the system gradle 9.7.1, not a wrapper. xcrun devicectl device install app for deployment."
+      },
+      {
+        "category": "completed-verification",
+        "status": "captured",
+        "detail": "cargo test passes with 2 tests on the host with no device. iOS Release build succeeds for app and both extensions. Runtime verification on iPhone 13 / iOS 26.6.1: the app displays core 0.1.0 and iOS entry limit 1800000, both read across the FFI from Rust. Android APK builds and unzip confirms libcallerfilter_core.so present for arm64-v8a, armeabi-v7a and x86_64. Linked sizes measured: iOS app 528K, extensions 492K each, .app 1.6M; Android core 232K-364K per ABI."
+      },
+      {
+        "category": "pending-verification",
+        "status": "captured",
+        "detail": "The Kotlin call has never executed — no Android device or emulator. Also unverified: whether the iOS Call Directory entry cap differs across devices or iOS versions (one device measured), and whether blocking and identification entries share a single cap on iOS."
+      },
+      {
+        "category": "runtime-limitations-workarounds",
+        "status": "captured",
+        "detail": "Xcode 26 Debug builds place target code in a separate __preview.dylib, leaving the extension principal class out of the .appex so it fails to enable; worked around with ENABLE_DEBUG_DYLIB=NO project-wide, so CI must build iOS Release. Stripping removes UniFFI metadata from ELF objects, so Kotlin bindings are generated from the host Mach-O library instead of the Android .so. JDK 26 is unusable by AGP 8.x and Gradle 8.x, so the project uses AGP 9 on Gradle 9 with the kotlin.android plugin omitted. Under AGP 9 generated Kotlin must go on the kotlin source set, not java. sdkmanager silently no-ops without --sdk_root."
+      },
+      {
+        "category": "blockers-risks",
+        "status": "captured",
+        "detail": "A paid Apple Developer account is a hard prerequisite before F004 works, because the real app needs an App Group to share rules between host and extensions and free teams cannot have one. Not needed for T009. Free personal-team profiles (team UY66NT5LGF) expire 7 days from 2026-09-08, so device work needs a rebuild to re-sign. No Android hardware means the Kotlin runtime path stays unproven. The AGP 9 / Gradle 9 / JDK 26 combination is unusual and CI must pin it deliberately."
+      },
+      {
+        "category": "user-visible-behavior",
+        "status": "captured",
+        "detail": "The iOS app on the user's iPhone shows 'Caller Filter', 'core 0.1.0' and 'iOS entry limit 1800000'. The Android app would show equivalent text but has not been run. Neither app filters anything yet — the extensions only call core_version() to prove linkage. No filtering logic exists; that is F002."
+      },
+      {
+        "category": "operator-actions",
+        "status": "captured",
+        "detail": "The user enabled Developer Mode on the iPhone, trusted the developer certificate under Settings > General > VPN and Device Management, added their Apple ID to Xcode, and confirmed the running app's on-screen values. The user declined installing an older JDK. No operator action is required for T009."
+      },
+      {
+        "category": "project-operating-notes",
+        "status": "captured",
+        "detail": "ANDROID_HOME, ANDROID_NDK_HOME and JAVA_HOME are not set in any shell profile and must be exported by CI and any new shell: ANDROID_HOME=/opt/homebrew/share/android-commandlinetools, ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865, JAVA_HOME=/opt/homebrew/opt/openjdk. Android uses the system gradle 9.7.1 directly; the wrapper was removed because generating it failed under JDK 26. The .xcodeproj is generated by xcodegen and gitignored — edit apps/ios/project.yml, never the project file. Judge core size from linked binaries only; the 49M static .a is pre-link noise, confirmed by rebuilding without the phonenumber dependency and getting the same figure."
+      },
+      {
+        "category": "conversation-only-facts",
+        "status": "captured",
+        "detail": "The user asked for brevity and plain English, now recorded as Project Guidelines §5. The user chose 1.5M as a safe entry target before learning the load cost is background-only, then agreed the number should sit nearer the cap and never be exposed as a user setting. The user's phone is an iPhone 13 named 'iPhone di Antonio' and is in Italian, so system paths appear as Impostazioni > App > Telefono > Blocco chiamate e identificazione. Signing team is UY66NT5LGF; an earlier guess of BJ4HAAB9B3 was wrong, and the certificate id 8GT5G9FQ28 is easy to mistake for the team id."
+      }
+    ],
+    "supportingDocuments": [],
+    "contentHash": "69b562cc038420bd7a65985598c9c8c7ef4e77bd8f3abf9e5dfe4fa53e233088",
+    "contentLength": 16356,
+    "verifiedAt": "2026-09-08T19:09:14.563Z"
+  },
   "handoffReadAt": "",
   "handoffHistory": [],
   "statusLog": [
@@ -316,7 +449,7 @@
   "sessionInfo": [
     {
       "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
-      "createdAt": "2026-09-08T13:56:53.032Z"
+      "createdAt": "2026-09-09T06:03:56.267Z"
     }
   ]
 }

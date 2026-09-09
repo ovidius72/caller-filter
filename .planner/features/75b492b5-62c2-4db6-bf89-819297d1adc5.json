@@ -11,8 +11,8 @@
   "contextReadyReason": "",
   "startDate": "",
   "endDate": "",
-  "workDone": "",
-  "workRemaining": "",
+  "workDone": "Repository created on main with the Rust core building and testing on the host, and both app skeletons linking that core through UniFFI. iOS has three targets (app, Call Directory extension, message filter extension) and is verified running on a real iPhone displaying values read across the FFI. Android builds an APK carrying the core for arm64-v8a, armeabi-v7a and x86_64. tools/build-ios.sh and tools/build-android.sh perform the whole per-platform pipeline including binding generation and size reporting.",
+  "workRemaining": "T009 — CI and shared conventions: build all seven targets, host tests, binding generation, both app builds, dataset validation failing the build, formatting/linting/test-layout/dependency policy, binary size tracking, and a possible lint enforcing the no-country-specific-code rule. Separately open: running the Kotlin call on real Android hardware, which has never been executed.",
   "acceptedDecisions": [],
   "phaseIds": [
     "02b119ce-80f4-43d1-bed4-5d9c64bc2c6c"
@@ -29,11 +29,11 @@
     }
   ],
   "createdAt": "2026-09-08T10:01:51.043Z",
-  "updatedAt": "2026-09-08T10:01:54.493Z",
+  "updatedAt": "2026-09-08T19:09:14.563Z",
   "sessionInfo": [
     {
       "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
-      "createdAt": "2026-09-08T13:56:53.032Z"
+      "createdAt": "2026-09-09T06:03:56.267Z"
     }
   ]
 }

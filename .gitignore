@@ -64,3 +64,6 @@ apps/ios/dd/
 
 # Xcode project is generated from project.yml by xcodegen — regenerate, don't edit
 apps/ios/*.xcodeproj/
+
+# Local signing config — personal team IDs never get committed
+apps/ios/.env

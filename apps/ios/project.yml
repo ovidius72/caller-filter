@@ -7,7 +7,9 @@ options:
 
 settings:
   base:
-    DEVELOPMENT_TEAM: UY66NT5LGF
+    # Comes from apps/ios/.env via tools/gen-ios-project.sh — never hardcode a
+    # team ID here, it is personal to one developer and breaks everyone else.
+    DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
     # Xcode 26 Debug builds put target code in a separate __preview.dylib, which
