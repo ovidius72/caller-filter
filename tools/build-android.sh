@@ -37,7 +37,7 @@ cargo ndk -o "$GEN/jniLibs" \
 echo "==> generating Kotlin bindings (from the host library)"
 cargo build --profile $PROFILE -p callerfilter-core
 cargo run --profile $PROFILE --bin uniffi-bindgen -- generate \
-  --library "target/$PROFILE/lib$LIB.dylib" \
+  --library "$(tools/host-cdylib.sh "$LIB" "$PROFILE")" \
   --language kotlin --out-dir "$GEN/kotlin" --no-format
 
 echo
