@@ -10,6 +10,7 @@ cd "$(dirname "$0")/.."
 LIB=callerfilter_core
 GEN=apps/android/app/generated
 PROFILE=release
+BINDINGS_PROFILE=bindings
 
 : "${ANDROID_HOME:=/opt/homebrew/share/android-commandlinetools}"
 export ANDROID_HOME
@@ -30,14 +31,15 @@ cargo ndk -o "$GEN/jniLibs" \
   -t arm64-v8a -t armeabi-v7a -t x86_64 \
   build --profile $PROFILE -p callerfilter-core
 
-# The release profile strips, and stripping removes the metadata UniFFI reads
-# from an ELF .so. Mach-O keeps it, which is why the iOS build can read its own
-# artifact. Bindings describe the crate's interface, not the target, so generate
-# them from the host library instead.
+# Bindings are read out of a built library's UniFFI metadata. The shipped .so
+# cannot supply it: the release profile strips, and stripping removes that
+# metadata from an ELF object. Bindings describe the crate's interface and not
+# the target, so build for the host under the unstripped `bindings` profile and
+# read that. See [profile.bindings] in the workspace Cargo.toml.
 echo "==> generating Kotlin bindings (from the host library)"
-cargo build --profile $PROFILE -p callerfilter-core
+cargo build --profile $BINDINGS_PROFILE -p callerfilter-core
 cargo run --profile $PROFILE --bin uniffi-bindgen -- generate \
-  --library "$(tools/host-cdylib.sh "$LIB" "$PROFILE")" \
+  --library "$(tools/host-cdylib.sh "$LIB" "$BINDINGS_PROFILE")" \
   --language kotlin --out-dir "$GEN/kotlin" --no-format
 
 echo
