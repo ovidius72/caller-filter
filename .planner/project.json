@@ -7,6 +7,10 @@
     "updatedAt": "2026-09-08T11:07:35.914Z",
     "sessionInfo": [
       {
+        "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+        "createdAt": "2026-09-09T06:54:49.444Z"
+      },
+      {
         "sessionId": "mcp-process:9cebeecb-cccb-43fb-808b-e26065ddf06b",
         "createdAt": "2026-09-08T11:07:42.300Z"
       }
@@ -33,18 +37,7 @@
     "Becoming the default phone or SMS app on either platform",
     "Outgoing call handling"
   ],
-  "decisions": [
-    "Shared Rust core with native UI per platform, chosen over Kotlin Multiplatform and over a cross-platform UI framework — the OS extensions are forced-native regardless, so the only shareable UI is a settings screen, and Rust's C ABI also reaches HarmonyOS",
-    "iOS calls are exact-number-only. Verified against SDK 26.2 headers: no app code runs at call time, CXCallDirectoryExtensionContext takes only ascending int64 entries, CXCall carries no number, LiveCommunicationKit's cellular API is outgoing-only (all 7 mentions of Cellular are outgoing), CTCallCenter is a deprecated stub. Becoming the EU default calling app does NOT grant incoming calls — Apple gave default messaging apps an incoming stream but deliberately did not do the same for calls",
-    "ONE RELEASE, NOT TWO. Calls and SMS ship together. Supersedes the earlier calls-only-first decision, which was reversed by the user. Rationale for reversal: the calls-only split gave iPhone its weak half first, since iPhone SMS runs all seven rule types live while iPhone calls are expansion-limited. No schedule pressure, so waiting on Google's SMS permission review is acceptable",
-    "NO EXTERNAL SPAM DATA IN RELEASE 1. The first release ships only the user's own filtering. This removes servers, data licensing and GDPR from the launch entirely, makes free genuinely free to run, gives the user's rules the whole iOS list with nothing competing for space, and ships only the differentiated half — competitors all sell spam lists, nobody sells user-authored rules",
-    "EXTERNAL SPAM DATA IS DEFERRED, NOT ABANDONED. Blocked on finding a licence that permits shipping the list inside a distributed app at a cost that works against a free product. Evidence: tellows sells €19.95/2yr (private use only) and €49.99/yr SME, whose terms state 'any sharing, publication, or external use of the contained data is strictly prohibited' and 'internal purposes' only, priced per phone-system channel — neither permits app redistribution; that needs an OEM deal, and tellows covers only 7 countries (DE, AT, CH, IT, ES, MX, UK). When it does land it must refresh DAILY",
-    "RULES-FIRST when the iOS list is tight: the user's own rules get the space and any external spam list fills only what is left. Moot for release 1, which has no external list, but stands as the standing priority rule for when external data lands",
-    "MOST SPECIFIC RULE WINS. A longer, more precise rule beats a broader one, so an allow on an exact number beats a deny on the range containing it without manual ordering. Ties between equally specific conflicting rules are surfaced to the user, never resolved silently",
-    "Location filtering and prefix filtering are the same operation — libphonenumber geocoding maps prefix to place — so they share one implementation. Location rules match landlines only, because mobile numbering is not geographic anywhere",
-    "The spam list, when it lands, must be synced to the device. A live per-call server lookup is impossible on iOS, so a centralized lookup could only ever augment Android and SMS",
-    "Data updates must never require an app release, per Project Guidelines §1. Metadata and geocoding data ship seeded in the bundle and update over the air, versioned, with the engine tolerating a metadata version it did not ship with"
-  ],
+  "decisions": [],
   "globalRules": [],
   "technologies": [
     "Rust (shared filtering core)",
@@ -65,7 +58,88 @@
     "beforeTaskStart": [],
     "afterPhaseComplete": []
   },
-  "acceptedDecisions": [],
+  "acceptedDecisions": [
+    {
+      "id": "legacy-project-decision-fb58a0414113556b",
+      "title": "Shared Rust core with native UI per platform, chosen over Kotlin Multiplatform and over a cross-p...",
+      "decision": "Shared Rust core with native UI per platform, chosen over Kotlin Multiplatform and over a cross-platform UI framework — the OS extensions are forced-native regardless, so the only shareable UI is a settings screen, and Rust's C ABI also reaches HarmonyOS",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "legacy-project-decision-cc7f999b067e8659",
+      "title": "iOS calls are exact-number-only. Verified against SDK 26.2 headers: no app code runs at call time...",
+      "decision": "iOS calls are exact-number-only. Verified against SDK 26.2 headers: no app code runs at call time, CXCallDirectoryExtensionContext takes only ascending int64 entries, CXCall carries no number, LiveCommunicationKit's cellular API is outgoing-only (all 7 mentions of Cellular are outgoing), CTCallCenter is a deprecated stub. Becoming the EU default calling app does NOT grant incoming calls — Apple gave default messaging apps an incoming stream but deliberately did not do the same for calls",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "legacy-project-decision-4c147ce45209eed5",
+      "title": "ONE RELEASE, NOT TWO. Calls and SMS ship together. Supersedes the earlier calls-only-first decisi...",
+      "decision": "ONE RELEASE, NOT TWO. Calls and SMS ship together. Supersedes the earlier calls-only-first decision, which was reversed by the user. Rationale for reversal: the calls-only split gave iPhone its weak half first, since iPhone SMS runs all seven rule types live while iPhone calls are expansion-limited. No schedule pressure, so waiting on Google's SMS permission review is acceptable",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "legacy-project-decision-18518636f5f8b46b",
+      "title": "NO EXTERNAL SPAM DATA IN RELEASE 1. The first release ships only the user's own filtering. This r...",
+      "decision": "NO EXTERNAL SPAM DATA IN RELEASE 1. The first release ships only the user's own filtering. This removes servers, data licensing and GDPR from the launch entirely, makes free genuinely free to run, gives the user's rules the whole iOS list with nothing competing for space, and ships only the differentiated half — competitors all sell spam lists, nobody sells user-authored rules",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "legacy-project-decision-cb41b76a1722e07c",
+      "title": "EXTERNAL SPAM DATA IS DEFERRED, NOT ABANDONED. Blocked on finding a licence that permits shipping...",
+      "decision": "EXTERNAL SPAM DATA IS DEFERRED, NOT ABANDONED. Blocked on finding a licence that permits shipping the list inside a distributed app at a cost that works against a free product. Evidence: tellows sells €19.95/2yr (private use only) and €49.99/yr SME, whose terms state 'any sharing, publication, or external use of the contained data is strictly prohibited' and 'internal purposes' only, priced per phone-system channel — neither permits app redistribution; that needs an OEM deal, and tellows covers only 7 countries (DE, AT, CH, IT, ES, MX, UK). When it does land it must refresh DAILY",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "legacy-project-decision-ed5546413dc73527",
+      "title": "RULES-FIRST when the iOS list is tight: the user's own rules get the space and any external spam...",
+      "decision": "RULES-FIRST when the iOS list is tight: the user's own rules get the space and any external spam list fills only what is left. Moot for release 1, which has no external list, but stands as the standing priority rule for when external data lands",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "legacy-project-decision-6ed03a1d48204448",
+      "title": "MOST SPECIFIC RULE WINS. A longer, more precise rule beats a broader one, so an allow on an exact...",
+      "decision": "MOST SPECIFIC RULE WINS. A longer, more precise rule beats a broader one, so an allow on an exact number beats a deny on the range containing it without manual ordering. Ties between equally specific conflicting rules are surfaced to the user, never resolved silently",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "legacy-project-decision-227005604ab77e27",
+      "title": "Location filtering and prefix filtering are the same operation — libphonenumber geocoding maps pr...",
+      "decision": "Location filtering and prefix filtering are the same operation — libphonenumber geocoding maps prefix to place — so they share one implementation. Location rules match landlines only, because mobile numbering is not geographic anywhere",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "legacy-project-decision-c65d25d07c41f555",
+      "title": "The spam list, when it lands, must be synced to the device. A live per-call server lookup is impo...",
+      "decision": "The spam list, when it lands, must be synced to the device. A live per-call server lookup is impossible on iOS, so a centralized lookup could only ever augment Android and SMS",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "legacy-project-decision-ed131d9975f0d124",
+      "title": "Data updates must never require an app release, per Project Guidelines §1. Metadata and geocoding...",
+      "decision": "Data updates must never require an app release, per Project Guidelines §1. Metadata and geocoding data ship seeded in the bundle and update over the air, versioned, with the engine tolerating a metadata version it did not ship with",
+      "rationale": "Migrated from the legacy project decisions collection.",
+      "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
+      "acceptedAt": "2026-09-09T06:54:47.048Z"
+    }
+  ],
   "nextFeatureNumber": 1,
   "nextPhaseNumber": 1,
   "nextTaskNumber": 1,

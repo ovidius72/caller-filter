@@ -26,6 +26,14 @@
       "toStatus": "in-progress",
       "title": "planned → in-progress",
       "description": ""
+    },
+    {
+      "id": "084692a3-10d8-4806-92da-1476fd038d53",
+      "date": "2026-09-09T06:06:35.352Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
+      "description": ""
     }
   ],
   "createdAt": "2026-09-08T10:01:51.043Z",
