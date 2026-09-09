@@ -18,6 +18,13 @@
 
 uniffi::setup_scaffolding!();
 
+pub mod rule;
+
+pub use rule::{
+    Authored, Conflict, Digits, Effect, LocationRef, Matcher, Pattern, PrefixSource, Rule,
+    RuleError, RuleId, RuleSet, Specificity,
+};
+
 /// How the engine was asked to treat a call or message.
 ///
 /// Android evaluates this live when a call arrives. iOS SMS evaluates it live

@@ -22,15 +22,209 @@
   "decisions": [],
   "acceptedDecisions": [],
   "completionCriteria": [],
-  "taskIds": [],
-  "tasks": [],
+  "taskIds": [
+    "e5b60bdf-d792-4f26-bd99-d0f062afddb5",
+    "810e41af-a580-4785-8bed-05aea8a1122f"
+  ],
+  "tasks": [
+    {
+      "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5",
+      "phaseId": "f2ebcc6f-be9a-4c65-843f-d89765b78397",
+      "number": 4,
+      "shortId": "ZADF9",
+      "priority": 1,
+      "shortName": "rule-model-and-specificity-ran",
+      "title": "Rule model and specificity ranking",
+      "status": "in-progress",
+      "description": "CURRENT STATE. core/src/lib.rs holds only core_version(), default_entry_limit(), EntryLimit and a Decision enum (Allow/Block/Silence/Label per the phase description — verify the variants against the file before extending). No rule type exists. The crate builds three ways (lib/staticlib/cdylib, core/Cargo.toml:12) and is exposed over UniFFI.\n\nGOAL. Define the persisted rule model and the total specificity order the evaluator will use. No evaluation logic here — that is T002.\n\nWHAT TO BUILD, in core/src/rule.rs (new), re-exported from lib.rs:\n\n1. Effect: Deny | Allow. Every rule carries one.\n\n2. RuleKind, the seven kinds from R2: ExactNumber, Pattern, StartsWith, EndsWith, Prefix, CallerId, Location. Location is NOT a distinct matcher — per the recorded decision it resolves to Prefix via geocoding (P004). Model it so that resolution happens before evaluation and the evaluator never sees a Location variant; an enum split between \"authored\" and \"resolved\" forms is the obvious shape, but pick what keeps the evaluator total.\n\n3. Rule: effect, kind, and whatever the kind needs. Plus a stable id — the UI must point at \"the rule that did not fit on iPhone\" (R2) and at both sides of a conflict.\n\n4. RuleSet: the collection the evaluator takes. Give it whatever index makes longest-match cheap; do not sort at evaluation time.\n\n5. Specificity: a total order across kinds and within a kind, so \"most specific wins\" is decidable without user ordering. Longer beats shorter, the way a routing table resolves. Two rules can tie — that is legal and T002 reports it.\n\n6. Conflict detection: find pairs of equally-specific rules with opposing effects that can both match. R2 requires these be surfaced, never resolved silently.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix, number length or place name anywhere in this file. Specificity must be derived from the rule, not from knowledge of any numbering plan.\n- Guidelines §2: this is the persisted truth. Nothing here stores or caches an expansion.\n- Guidelines §4: no measured value as a literal.\n- Runs inside an iOS extension under memory pressure and on the Android call path with a 5-second budget, so keep it allocation-light. No per-evaluation allocation in the types this task defines.\n\nEDGE CASES to encode as tests: empty RuleSet; a rule matching every number; two identical rules with opposite effects; an Allow with no enclosing Deny (legal, and a no-op on iOS call expansion — the model must not forbid it); overlapping Denies of different specificity; a Pattern and a StartsWith that match the same number.\n\nDONE WHEN. Types compile, specificity is a proven total order, conflict detection is tested both ways (finds a real conflict, and does not fire on a genuine specificity difference), and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh all pass.",
+      "descriptionUpdatedAt": "2026-09-09T08:42:11.838Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-001-planned-in-progress",
+          "date": "2026-09-09T08:53:02.595Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-001-read-core-src-lib-rs-and-confirm-the-existing-decision-variants",
+          "number": 1,
+          "title": "Read core/src/lib.rs and confirm the existing Decision variants",
+          "checked": true
+        },
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-002-effect-and-rulekind-covering-all-seven-r2-kinds",
+          "number": 2,
+          "title": "Effect and RuleKind covering all seven R2 kinds",
+          "checked": true
+        },
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-003-rule-with-a-stable-id-the-ui-can-point-at",
+          "number": 3,
+          "title": "Rule with a stable id the UI can point at",
+          "checked": true
+        },
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-004-ruleset-with-an-index-that-makes-longest-match-cheap",
+          "number": 4,
+          "title": "RuleSet with an index that makes longest-match cheap",
+          "checked": true
+        },
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-005-location-modelled-so-it-resolves-to-prefix-before-evaluation",
+          "number": 5,
+          "title": "Location modelled so it resolves to Prefix before evaluation",
+          "checked": true
+        },
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-006-total-specificity-order-ties-allowed",
+          "number": 6,
+          "title": "Total specificity order, ties allowed",
+          "checked": true
+        },
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-007-conflict-detection-for-equally-specific-opposing-rules",
+          "number": 7,
+          "title": "Conflict detection for equally-specific opposing rules",
+          "checked": true
+        },
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-008-tests-for-every-edge-case-listed-in-the-description",
+          "number": 8,
+          "title": "Tests for every edge case listed in the description",
+          "checked": true
+        },
+        {
+          "id": "e5b60bdf-d792-4f26-bd99-d0f062afddb5-check-009-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
+          "number": 9,
+          "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
+          "checked": true
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-09T08:53:02.595Z",
+      "completedAt": "",
+      "createdAt": "2026-09-09T08:42:11.824Z",
+      "updatedAt": "2026-09-09T08:58:10.133Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-09T08:53:02.567Z"
+        }
+      ]
+    },
+    {
+      "id": "810e41af-a580-4785-8bed-05aea8a1122f",
+      "phaseId": "f2ebcc6f-be9a-4c65-843f-d89765b78397",
+      "number": 5,
+      "shortId": "SD4SM",
+      "priority": 2,
+      "shortName": "evaluator-with-most-specific-w",
+      "title": "Evaluator with most-specific-wins precedence",
+      "status": "planned",
+      "description": "DEPENDS ON P002(F002)/T004 — the rule model and specificity order.\n\nCURRENT STATE. No evaluator exists. core/src/lib.rs has a Decision enum; check its variants before use. T004 will have added core/src/rule.rs with Effect, RuleKind, Rule, RuleSet and a total specificity order.\n\nGOAL. evaluate(e164: &str, rules: &RuleSet) -> Decision, in core/src/evaluate.rs (new). This is the function both platform shells call, and per Guidelines §3 it is the only place filtering logic lives. Serves R2.\n\nWHAT TO BUILD:\n\n1. evaluate() returning Allow | Block | Silence | Label(text). Called live on Android calls, Android SMS and iOS SMS. Not called on iOS calls — those are pre-expanded (P003) — so this function must not assume it sees every decision the product makes.\n\n2. Most-specific-wins: the highest-specificity matching rule decides, regardless of authoring order. An Allow on an exact number beats a Deny on the range containing it. Implement as longest-match, not as an ordered scan with early exit.\n\n3. Equally-specific conflicts: when the winners tie with opposing effects, do not pick one. Return or surface the conflict so the UI can ask the user (R2). Decide deliberately whether evaluate() reports this inline or a separate query does, and record which in the completion note — the call path cannot afford to build conflict reports on every call.\n\n4. Input handling: evaluate takes E164. Normalization lives with parsing in P003, so this task takes already-normalized input and must say so at the boundary rather than half-normalizing.\n\nPERFORMANCE, both hard constraints from R2:\n- Android CallScreeningService must answer within 5 seconds of binding, and the phone does not ring until it does. Internal only, never user-visible.\n- The iOS SMS extension runs under memory pressure.\nTherefore: no allocation on the matching path, no regex compilation per call, no full scan of the rule set where the index from T004 can avoid it. Add a test that evaluates against a large rule set so a regression in complexity is visible.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix, length or place name. The evaluator must not know what country a number is from.\n- Guidelines §3: no filtering logic in Swift or Kotlin; it all lands here.\n- Guidelines §4: no measured threshold as a literal.\n\nEDGE CASES to test: empty rule set (Allow); no rule matches (Allow); a rule matching every number; nested Deny/Allow/Deny at three specificities; two equally-specific opposing rules; an Allow with no enclosing Deny; a number that matches a Pattern and a StartsWith of equal specificity. Also: withheld numbers never reach us on Android (PRESENTATION_RESTRICTED and friends) — evaluate() should not be given a placeholder for them, and the boundary must make that impossible rather than relying on callers.\n\nDONE WHEN. evaluate() is correct against every case above, the large-rule-set test shows the index is actually used, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh all pass. Per the phase description this carries the heaviest test coverage in the project — a bug here is a bug on every platform at once.",
+      "descriptionUpdatedAt": "2026-09-09T08:42:32.548Z",
+      "notes": "",
+      "statusLog": [],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-001-evaluate-e164-ruleset-decision-in-core-src-evaluate-rs",
+          "number": 1,
+          "title": "evaluate(e164, RuleSet) -> Decision in core/src/evaluate.rs",
+          "checked": false
+        },
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-002-longest-match-precedence-not-an-ordered-scan",
+          "number": 2,
+          "title": "Longest-match precedence, not an ordered scan",
+          "checked": false
+        },
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-003-tie-with-opposing-effects-surfaced-never-silently-resolved",
+          "number": 3,
+          "title": "Tie with opposing effects surfaced, never silently resolved",
+          "checked": false
+        },
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-004-decide-and-record-where-conflict-reporting-lives-off-the-call-path",
+          "number": 4,
+          "title": "Decide and record where conflict reporting lives, off the call path",
+          "checked": false
+        },
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-005-no-allocation-and-no-regex-compilation-on-the-matching-path",
+          "number": 5,
+          "title": "No allocation and no regex compilation on the matching path",
+          "checked": false
+        },
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-006-large-rule-set-test-that-would-catch-a-complexity-regression",
+          "number": 6,
+          "title": "Large-rule-set test that would catch a complexity regression",
+          "checked": false
+        },
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-007-tests-for-every-edge-case-listed-in-the-description",
+          "number": 7,
+          "title": "Tests for every edge case listed in the description",
+          "checked": false
+        },
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-008-boundary-makes-a-withheld-placeholder-number-impossible-to-pass-in",
+          "number": 8,
+          "title": "Boundary makes a withheld/placeholder number impossible to pass in",
+          "checked": false
+        },
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-009-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
+          "number": 9,
+          "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "",
+      "completedAt": "",
+      "createdAt": "2026-09-09T08:42:32.537Z",
+      "updatedAt": "2026-09-09T08:42:32.537Z",
+      "sessionInfo": []
+    }
+  ],
   "createdAt": "2026-09-08T08:29:52.818Z",
-  "updatedAt": "2026-09-08T08:29:52.818Z",
+  "updatedAt": "2026-09-09T08:58:10.133Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
   "handoffReadAt": "",
   "handoffHistory": [],
-  "statusLog": [],
-  "sessionInfo": []
+  "statusLog": [
+    {
+      "id": "7c12a533-c79a-4219-9180-5b9bcec64c10",
+      "date": "2026-09-09T08:53:02.600Z",
+      "fromStatus": "draft",
+      "toStatus": "in-progress",
+      "title": "draft → in-progress",
+      "description": ""
+    }
+  ],
+  "sessionInfo": [
+    {
+      "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+      "createdAt": "2026-09-09T08:53:02.567Z"
+    }
+  ]
 }
