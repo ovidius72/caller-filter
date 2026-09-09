@@ -138,11 +138,20 @@
       "priority": 2,
       "shortName": "evaluator-with-most-specific-w",
       "title": "Evaluator with most-specific-wins precedence",
-      "status": "planned",
+      "status": "in-progress",
       "description": "DEPENDS ON P002(F002)/T004 — the rule model and specificity order.\n\nCURRENT STATE. No evaluator exists. core/src/lib.rs has a Decision enum; check its variants before use. T004 will have added core/src/rule.rs with Effect, RuleKind, Rule, RuleSet and a total specificity order.\n\nGOAL. evaluate(e164: &str, rules: &RuleSet) -> Decision, in core/src/evaluate.rs (new). This is the function both platform shells call, and per Guidelines §3 it is the only place filtering logic lives. Serves R2.\n\nWHAT TO BUILD:\n\n1. evaluate() returning Allow | Block | Silence | Label(text). Called live on Android calls, Android SMS and iOS SMS. Not called on iOS calls — those are pre-expanded (P003) — so this function must not assume it sees every decision the product makes.\n\n2. Most-specific-wins: the highest-specificity matching rule decides, regardless of authoring order. An Allow on an exact number beats a Deny on the range containing it. Implement as longest-match, not as an ordered scan with early exit.\n\n3. Equally-specific conflicts: when the winners tie with opposing effects, do not pick one. Return or surface the conflict so the UI can ask the user (R2). Decide deliberately whether evaluate() reports this inline or a separate query does, and record which in the completion note — the call path cannot afford to build conflict reports on every call.\n\n4. Input handling: evaluate takes E164. Normalization lives with parsing in P003, so this task takes already-normalized input and must say so at the boundary rather than half-normalizing.\n\nPERFORMANCE, both hard constraints from R2:\n- Android CallScreeningService must answer within 5 seconds of binding, and the phone does not ring until it does. Internal only, never user-visible.\n- The iOS SMS extension runs under memory pressure.\nTherefore: no allocation on the matching path, no regex compilation per call, no full scan of the rule set where the index from T004 can avoid it. Add a test that evaluates against a large rule set so a regression in complexity is visible.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix, length or place name. The evaluator must not know what country a number is from.\n- Guidelines §3: no filtering logic in Swift or Kotlin; it all lands here.\n- Guidelines §4: no measured threshold as a literal.\n\nEDGE CASES to test: empty rule set (Allow); no rule matches (Allow); a rule matching every number; nested Deny/Allow/Deny at three specificities; two equally-specific opposing rules; an Allow with no enclosing Deny; a number that matches a Pattern and a StartsWith of equal specificity. Also: withheld numbers never reach us on Android (PRESENTATION_RESTRICTED and friends) — evaluate() should not be given a placeholder for them, and the boundary must make that impossible rather than relying on callers.\n\nDONE WHEN. evaluate() is correct against every case above, the large-rule-set test shows the index is actually used, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh all pass. Per the phase description this carries the heaviest test coverage in the project — a bug here is a bug on every platform at once.",
       "descriptionUpdatedAt": "2026-09-09T08:42:32.548Z",
       "notes": "",
-      "statusLog": [],
+      "statusLog": [
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-001-planned-in-progress",
+          "date": "2026-09-09T16:00:21.555Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
       "decisions": [],
       "acceptedDecisions": [],
       "checklist": [
@@ -205,15 +214,20 @@
       "dependsOn": [],
       "pauseSnapshot": null,
       "pauseHistory": [],
-      "startedAt": "",
+      "startedAt": "2026-09-09T16:00:21.555Z",
       "completedAt": "",
       "createdAt": "2026-09-09T08:42:32.537Z",
-      "updatedAt": "2026-09-09T08:42:32.537Z",
-      "sessionInfo": []
+      "updatedAt": "2026-09-09T16:00:21.555Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-09T16:00:21.529Z"
+        }
+      ]
     }
   ],
   "createdAt": "2026-09-08T08:29:52.818Z",
-  "updatedAt": "2026-09-09T08:58:42.191Z",
+  "updatedAt": "2026-09-09T16:00:21.555Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -232,7 +246,7 @@
   "sessionInfo": [
     {
       "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
-      "createdAt": "2026-09-09T08:53:02.567Z"
+      "createdAt": "2026-09-09T16:00:21.529Z"
     }
   ]
 }

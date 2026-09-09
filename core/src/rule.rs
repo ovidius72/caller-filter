@@ -163,16 +163,24 @@ impl Pattern {
         }
     }
 
-    /// True when every position of `digits` is acceptable and the lengths agree.
-    fn matches_digits(&self, digits: &Digits) -> bool {
+    /// True when every position is acceptable and the lengths agree.
+    ///
+    /// Whether a pattern accepts a run of digits is a property of the pattern,
+    /// so it lives here. Which rule then wins is precedence, and that lives in
+    /// `evaluate`. Takes `&str` because the evaluator borrows straight from the
+    /// incoming number and must not allocate to ask this.
+    pub fn matches_str(&self, digits: &str) -> bool {
         if digits.len() != self.atoms.len() {
             return false;
         }
         digits
-            .as_str()
             .bytes()
             .enumerate()
-            .all(|(i, b)| self.accepts_at(i, b - b'0'))
+            .all(|(i, b)| b.is_ascii_digit() && self.accepts_at(i, b - b'0'))
+    }
+
+    fn matches_digits(&self, digits: &Digits) -> bool {
+        self.matches_str(digits.as_str())
     }
 
     /// True when the two patterns could both accept some number.
