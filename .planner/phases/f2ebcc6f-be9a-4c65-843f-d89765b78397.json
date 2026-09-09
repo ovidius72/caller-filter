@@ -138,9 +138,9 @@
       "priority": 2,
       "shortName": "evaluator-with-most-specific-w",
       "title": "Evaluator with most-specific-wins precedence",
-      "status": "in-progress",
-      "description": "DEPENDS ON P002(F002)/T004 — the rule model and specificity order.\n\nCURRENT STATE. No evaluator exists. core/src/lib.rs has a Decision enum; check its variants before use. T004 will have added core/src/rule.rs with Effect, RuleKind, Rule, RuleSet and a total specificity order.\n\nGOAL. evaluate(e164: &str, rules: &RuleSet) -> Decision, in core/src/evaluate.rs (new). This is the function both platform shells call, and per Guidelines §3 it is the only place filtering logic lives. Serves R2.\n\nWHAT TO BUILD:\n\n1. evaluate() returning Allow | Block | Silence | Label(text). Called live on Android calls, Android SMS and iOS SMS. Not called on iOS calls — those are pre-expanded (P003) — so this function must not assume it sees every decision the product makes.\n\n2. Most-specific-wins: the highest-specificity matching rule decides, regardless of authoring order. An Allow on an exact number beats a Deny on the range containing it. Implement as longest-match, not as an ordered scan with early exit.\n\n3. Equally-specific conflicts: when the winners tie with opposing effects, do not pick one. Return or surface the conflict so the UI can ask the user (R2). Decide deliberately whether evaluate() reports this inline or a separate query does, and record which in the completion note — the call path cannot afford to build conflict reports on every call.\n\n4. Input handling: evaluate takes E164. Normalization lives with parsing in P003, so this task takes already-normalized input and must say so at the boundary rather than half-normalizing.\n\nPERFORMANCE, both hard constraints from R2:\n- Android CallScreeningService must answer within 5 seconds of binding, and the phone does not ring until it does. Internal only, never user-visible.\n- The iOS SMS extension runs under memory pressure.\nTherefore: no allocation on the matching path, no regex compilation per call, no full scan of the rule set where the index from T004 can avoid it. Add a test that evaluates against a large rule set so a regression in complexity is visible.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix, length or place name. The evaluator must not know what country a number is from.\n- Guidelines §3: no filtering logic in Swift or Kotlin; it all lands here.\n- Guidelines §4: no measured threshold as a literal.\n\nEDGE CASES to test: empty rule set (Allow); no rule matches (Allow); a rule matching every number; nested Deny/Allow/Deny at three specificities; two equally-specific opposing rules; an Allow with no enclosing Deny; a number that matches a Pattern and a StartsWith of equal specificity. Also: withheld numbers never reach us on Android (PRESENTATION_RESTRICTED and friends) — evaluate() should not be given a placeholder for them, and the boundary must make that impossible rather than relying on callers.\n\nDONE WHEN. evaluate() is correct against every case above, the large-rule-set test shows the index is actually used, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh all pass. Per the phase description this carries the heaviest test coverage in the project — a bug here is a bug on every platform at once.",
-      "descriptionUpdatedAt": "2026-09-09T08:42:32.548Z",
+      "status": "done",
+      "description": "DEPENDS ON P002(F002)/T004 — the rule model and specificity order.\n\nCURRENT STATE. No evaluator exists. core/src/lib.rs has a Decision enum; check its variants before use. T004 will have added core/src/rule.rs with Effect, RuleKind, Rule, RuleSet and a total specificity order.\n\nGOAL. evaluate(e164: &str, rules: &RuleSet) -> Decision, in core/src/evaluate.rs (new). This is the function both platform shells call, and per Guidelines §3 it is the only place filtering logic lives. Serves R2.\n\nWHAT TO BUILD:\n\n1. evaluate() returning Allow | Block | Silence | Label(text). Called live on Android calls, Android SMS and iOS SMS. Not called on iOS calls — those are pre-expanded (P003) — so this function must not assume it sees every decision the product makes.\n\n2. Most-specific-wins: the highest-specificity matching rule decides, regardless of authoring order. An Allow on an exact number beats a Deny on the range containing it. Implement as longest-match, not as an ordered scan with early exit.\n\n3. Equally-specific conflicts: when the winners tie with opposing effects, do not pick one. Return or surface the conflict so the UI can ask the user (R2). Decide deliberately whether evaluate() reports this inline or a separate query does, and record which in the completion note — the call path cannot afford to build conflict reports on every call.\n\n4. Input handling: evaluate takes E164. Normalization lives with parsing in P003, so this task takes already-normalized input and must say so at the boundary rather than half-normalizing.\n\nPERFORMANCE, both hard constraints from R2:\n- Android CallScreeningService must answer within 5 seconds of binding, and the phone does not ring until it does. Internal only, never user-visible.\n- The iOS SMS extension runs under memory pressure.\nTherefore: no allocation on the matching path, no regex compilation per call, no full scan of the rule set where the index from T004 can avoid it. Add a test that evaluates against a large rule set so a regression in complexity is visible.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix, length or place name. The evaluator must not know what country a number is from.\n- Guidelines §3: no filtering logic in Swift or Kotlin; it all lands here.\n- Guidelines §4: no measured threshold as a literal.\n\nEDGE CASES to test: empty rule set (Allow); no rule matches (Allow); a rule matching every number; nested Deny/Allow/Deny at three specificities; two equally-specific opposing rules; an Allow with no enclosing Deny; a number that matches a Pattern and a StartsWith of equal specificity. Also: withheld numbers never reach us on Android (PRESENTATION_RESTRICTED and friends) — evaluate() should not be given a placeholder for them, and the boundary must make that impossible rather than relying on callers.\n\nDONE WHEN. evaluate() is correct against every case above, the large-rule-set test shows the index is actually used, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh all pass. Per the phase description this carries the heaviest test coverage in the project — a bug here is a bug on every platform at once.\n\n---\n**Completion summary:**\nSHIPPED. Commit fa7beee.\n\ncore/src/evaluate.rs (new) and core/tests/evaluate.rs (new, 17 tests). core/src/rule.rs gained Pattern::matches_str as pub. core/src/lib.rs re-exports evaluate, Call, Verdict, E164.\n\nAPI. evaluate(&Call, &RuleSet) -> Verdict { decision, matched: Option<&Rule>, contested: bool }. Verdict borrows, so it costs no allocation. `matched` names the rule that decided, which R2 needs — a rule must never silently start or stop applying, and the caller has to be able to say which one acted.\n\nDECISION — conflict reporting lives at edit time, not on the call path. This was the explicit open question in the task. RuleSet::conflicts() (T004) costs a pass over the rules and runs when rules are edited. evaluate() only sets a `contested` bool, which it already knows for free from the walk it is doing. Building a conflict report per call was never affordable.\n\nDECISION — a tie allows, and says so. When the best match ties with an opposing rule of equal specificity, evaluate does not pick a side on the merits: it returns Decision::Allow and sets contested. The phone is ringing, so something must happen now, and allowing is the recoverable half. An unwanted call that gets through is visible and can be blocked afterwards; a wanted call that is blocked is silent, and on iOS the system never tells the app it happened. The real resolution is asking the user at edit time.\n\nDECISION — E164 is the boundary that keeps withheld callers out. E164::new returns None for anything that is not a normalised number, including \"\", \"+\", \"unknown\" and \"private\". Android never delivers a withheld caller to a screening service (PRESENTATION_RESTRICTED, UNKNOWN, UNAVAILABLE, PAYPHONE), and there is deliberately no placeholder variant, so no caller can invent one and have it evaluated. It checks shape only; how long a number should be is country data and §1 keeps it out.\n\nCall carries the number plus an optional caller ID, because a call has both and a rule may match either. Caller ID is compared with eq_ignore_ascii_case — networks are inconsistent about case and a lowercased copy would allocate.\n\nPRECEDENCE. Walks the specificity-sorted set from most specific, stops as soon as it drops below the best match found, and while at that specificity checks only whether an opposing rule ties. Authoring order is irrelevant and there is a test asserting the same set gives the same answer reversed.\n\nVERIFIED. cargo test: 47 pass (12 unit, 17 evaluate, 18 rule_model), 0 fail. cargo fmt --check clean. cargo clippy --all-targets -D warnings clean. tools/check-no-hardcoded-numbering.sh passes. UniFFI binding generation re-run and still succeeds. Host only; this module is pure logic and needs no device.\n\nPERFORMANCE, and how far it was actually checked. The matching path allocates nothing and compiles no regex — every arm borrows. The large-set test is a tripwire, not a benchmark: 10,001 rules, 2,000 evaluations, asserted under a deliberately loose bound so a slow CI runner stays honest. It would catch the walk becoming quadratic; it would not catch a modest constant-factor regression. Note the index is only the sorted order, and a non-matching call still walks the whole set. That is fine and deliberate: real rule sets are tens of rules, because it is the iOS expansion that gets large, not the rule count. A trie would only pay at counts no user reaches.\n\nGAP FOUND, NOT FILLED. Decision has four variants; evaluate can only ever produce two. Decision::Silence and Decision::Label(String) are unreachable from the current rule model, because Effect is only Deny or Allow and carries no treatment. Label belongs to R3 (spam labelling, deferred, and iOS-calls-only, which never calls evaluate). Silence is a real Android capability (CallResponse.Builder setSilenceCall) that no rule can currently ask for. Filling this means either a per-rule treatment on a deny or a global user preference, and R2 specifies neither, so it was left alone rather than invented. Flagged for a product decision.\n\nUNVERIFIED. Nothing here has run on a device or been called from Swift or Kotlin. Allocation-freedom is a property of the code, argued and reviewed, not measured with an allocator counter. The five-second Android budget is not tested against — there is no Android runtime path yet.\n\nNOT DONE HERE. No normalisation: evaluate takes an already-normalised number and P003(F002) owns parsing. No expansion, no geocoding. Nothing exported over UniFFI yet; the FFI surface is P005(F002).",
+      "descriptionUpdatedAt": "2026-09-09T16:04:40.153Z",
       "notes": "",
       "statusLog": [
         {
@@ -150,6 +150,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-002-in-progress-done",
+          "date": "2026-09-09T16:04:40.152Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "SHIPPED. Commit fa7beee.\n\ncore/src/evaluate.rs (new) and core/tests/evaluate.rs (new, 17 tests). core/src/rule.rs gained Pattern::matches_str as pub. core/src/lib.rs re-exports evaluate, Call, Verdict, E164.\n\nAPI. evaluate(&Call, &RuleSet) -> Verdict { decision, matched: Option<&Rule>, contested: bool }. Verdict borrows, so it costs no allocation. `matched` names the rule that decided, which R2 needs — a rule must never silently start or stop applying, and the caller has to be able to say which one acted.\n\nDECISION — conflict reporting lives at edit time, not on the call path. This was the explicit open question in the task. RuleSet::conflicts() (T004) costs a pass over the rules and runs when rules are edited. evaluate() only sets a `contested` bool, which it already knows for free from the walk it is doing. Building a conflict report per call was never affordable.\n\nDECISION — a tie allows, and says so. When the best match ties with an opposing rule of equal specificity, evaluate does not pick a side on the merits: it returns Decision::Allow and sets contested. The phone is ringing, so something must happen now, and allowing is the recoverable half. An unwanted call that gets through is visible and can be blocked afterwards; a wanted call that is blocked is silent, and on iOS the system never tells the app it happened. The real resolution is asking the user at edit time.\n\nDECISION — E164 is the boundary that keeps withheld callers out. E164::new returns None for anything that is not a normalised number, including \"\", \"+\", \"unknown\" and \"private\". Android never delivers a withheld caller to a screening service (PRESENTATION_RESTRICTED, UNKNOWN, UNAVAILABLE, PAYPHONE), and there is deliberately no placeholder variant, so no caller can invent one and have it evaluated. It checks shape only; how long a number should be is country data and §1 keeps it out.\n\nCall carries the number plus an optional caller ID, because a call has both and a rule may match either. Caller ID is compared with eq_ignore_ascii_case — networks are inconsistent about case and a lowercased copy would allocate.\n\nPRECEDENCE. Walks the specificity-sorted set from most specific, stops as soon as it drops below the best match found, and while at that specificity checks only whether an opposing rule ties. Authoring order is irrelevant and there is a test asserting the same set gives the same answer reversed.\n\nVERIFIED. cargo test: 47 pass (12 unit, 17 evaluate, 18 rule_model), 0 fail. cargo fmt --check clean. cargo clippy --all-targets -D warnings clean. tools/check-no-hardcoded-numbering.sh passes. UniFFI binding generation re-run and still succeeds. Host only; this module is pure logic and needs no device.\n\nPERFORMANCE, and how far it was actually checked. The matching path allocates nothing and compiles no regex — every arm borrows. The large-set test is a tripwire, not a benchmark: 10,001 rules, 2,000 evaluations, asserted under a deliberately loose bound so a slow CI runner stays honest. It would catch the walk becoming quadratic; it would not catch a modest constant-factor regression. Note the index is only the sorted order, and a non-matching call still walks the whole set. That is fine and deliberate: real rule sets are tens of rules, because it is the iOS expansion that gets large, not the rule count. A trie would only pay at counts no user reaches.\n\nGAP FOUND, NOT FILLED. Decision has four variants; evaluate can only ever produce two. Decision::Silence and Decision::Label(String) are unreachable from the current rule model, because Effect is only Deny or Allow and carries no treatment. Label belongs to R3 (spam labelling, deferred, and iOS-calls-only, which never calls evaluate). Silence is a real Android capability (CallResponse.Builder setSilenceCall) that no rule can currently ask for. Filling this means either a per-rule treatment on a deny or a global user preference, and R2 specifies neither, so it was left alone rather than invented. Flagged for a product decision.\n\nUNVERIFIED. Nothing here has run on a device or been called from Swift or Kotlin. Allocation-freedom is a property of the code, argued and reviewed, not measured with an allocator counter. The five-second Android budget is not tested against — there is no Android runtime path yet.\n\nNOT DONE HERE. No normalisation: evaluate takes an already-normalised number and P003(F002) owns parsing. No expansion, no geocoding. Nothing exported over UniFFI yet; the FFI surface is P005(F002)."
         }
       ],
       "decisions": [],
@@ -159,55 +167,55 @@
           "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-001-evaluate-e164-ruleset-decision-in-core-src-evaluate-rs",
           "number": 1,
           "title": "evaluate(e164, RuleSet) -> Decision in core/src/evaluate.rs",
-          "checked": false
+          "checked": true
         },
         {
           "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-002-longest-match-precedence-not-an-ordered-scan",
           "number": 2,
           "title": "Longest-match precedence, not an ordered scan",
-          "checked": false
+          "checked": true
         },
         {
           "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-003-tie-with-opposing-effects-surfaced-never-silently-resolved",
           "number": 3,
           "title": "Tie with opposing effects surfaced, never silently resolved",
-          "checked": false
+          "checked": true
         },
         {
           "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-004-decide-and-record-where-conflict-reporting-lives-off-the-call-path",
           "number": 4,
           "title": "Decide and record where conflict reporting lives, off the call path",
-          "checked": false
+          "checked": true
         },
         {
           "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-005-no-allocation-and-no-regex-compilation-on-the-matching-path",
           "number": 5,
           "title": "No allocation and no regex compilation on the matching path",
-          "checked": false
+          "checked": true
         },
         {
           "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-006-large-rule-set-test-that-would-catch-a-complexity-regression",
           "number": 6,
           "title": "Large-rule-set test that would catch a complexity regression",
-          "checked": false
+          "checked": true
         },
         {
           "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-007-tests-for-every-edge-case-listed-in-the-description",
           "number": 7,
           "title": "Tests for every edge case listed in the description",
-          "checked": false
+          "checked": true
         },
         {
           "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-008-boundary-makes-a-withheld-placeholder-number-impossible-to-pass-in",
           "number": 8,
           "title": "Boundary makes a withheld/placeholder number impossible to pass in",
-          "checked": false
+          "checked": true
         },
         {
           "id": "810e41af-a580-4785-8bed-05aea8a1122f-check-009-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
           "number": 9,
           "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -215,9 +223,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-09T16:00:21.555Z",
-      "completedAt": "",
+      "completedAt": "2026-09-09T16:04:40.152Z",
       "createdAt": "2026-09-09T08:42:32.537Z",
-      "updatedAt": "2026-09-09T16:00:21.555Z",
+      "updatedAt": "2026-09-09T16:04:40.152Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
@@ -227,7 +235,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:29:52.818Z",
-  "updatedAt": "2026-09-09T16:00:21.555Z",
+  "updatedAt": "2026-09-09T16:04:40.152Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -240,6 +248,14 @@
       "fromStatus": "draft",
       "toStatus": "in-progress",
       "title": "draft → in-progress",
+      "description": ""
+    },
+    {
+      "id": "28b76154-2868-4c32-8980-44e0c412cf3d",
+      "date": "2026-09-09T16:04:40.158Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
       "description": ""
     }
   ],
