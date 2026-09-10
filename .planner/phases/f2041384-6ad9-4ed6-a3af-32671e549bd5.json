@@ -35,9 +35,9 @@
       "priority": 1,
       "shortName": "geocode-a-number-to-a-place-wi",
       "title": "Geocode a number to a place, with language fallback",
-      "status": "in-progress",
-      "description": "DEPENDS ON P006(F003)/T015, which packs the place data. core/src/dataset.rs already provides Dataset::lookup(digits) doing longest-prefix match, so the lookup itself exists; this is the layer above it.\n\nCURRENT STATE. Nothing in the core geocodes. The packed datasets build to datasets/build/places.<lang>.cfds and nothing loads them.\n\nGOAL. geocode(number, languages, datasets) -> Located, in core/src/geocode.rs (new). Serves R7's place-name half and the display side of R2.\n\nTHE ANSWER IS NOT A STRING. There are at least three outcomes and they are different things to say:\n- a place name, plus which language it came from, because that is not always the one asked for;\n- NOT GEOGRAPHIC — the number is a mobile, and mobile numbering is not tied to a place anywhere in the world. VERIFIED 2026-09-10: Italy has 0 geocoding entries for 393 (mobile) and 121 for 390 (landline). Returning \"nothing found\" here would be a lie; the UI must be able to say why;\n- no data — the country or prefix simply is not covered.\nCollapsing these into Option<String> loses exactly the honesty R2 and R8 ask for.\n\nLANGUAGE FALLBACK (R7), in order: the user's language, then English, then the bare prefix with no name. Never a blank, never an untranslated key. This is the NORMAL path, not an edge case — measured coverage: English 151 countries; Italian 2; German 5; Chinese 2. An Italian user gets Italian names for Italy and Switzerland and English everywhere else.\n\nACCURACY IS APPROXIMATE, and the type should not pretend otherwise. Number portability means a landline can keep its number after moving. The data is a good guide, not a fact about where a caller is.\n\nWHAT TO BUILD:\n1. A Located result covering the cases above, carrying the language actually used.\n2. A holder for several loaded datasets, ordered by preference, that tries each in turn.\n3. Loading datasets from bytes. The core must not read files — the shells own IO — so take bytes or an already-parsed Dataset.\n4. Deciding \"not geographic\" from the number's type via the phonenumber metadata, not by guessing from an empty lookup: a missing entry and a mobile are different answers.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code.\n- Guidelines §5 / R7: no user-facing English in the core. Return facts and let the shell word them.\n- Runs app-side, not in the iOS extension — see the note in core/src/dataset.rs.\n\nEDGE CASES to test: a landline in a covered country; a mobile in the same country; a country with no data in any loaded language; a language that covers the country and one that does not, proving fallback; an empty dataset list; a number shorter than any prefix; the same number in two languages giving two names.\n\nDONE WHEN. Every case above is distinguishable in the result, fallback is proven by test rather than asserted, and cargo test / fmt / clippy -D warnings / both lints pass. Fixtures in core/tests/.",
-      "descriptionUpdatedAt": "2026-09-10T14:40:12.735Z",
+      "status": "done",
+      "description": "DEPENDS ON P006(F003)/T015, which packs the place data. core/src/dataset.rs already provides Dataset::lookup(digits) doing longest-prefix match, so the lookup itself exists; this is the layer above it.\n\nCURRENT STATE. Nothing in the core geocodes. The packed datasets build to datasets/build/places.<lang>.cfds and nothing loads them.\n\nGOAL. geocode(number, languages, datasets) -> Located, in core/src/geocode.rs (new). Serves R7's place-name half and the display side of R2.\n\nTHE ANSWER IS NOT A STRING. There are at least three outcomes and they are different things to say:\n- a place name, plus which language it came from, because that is not always the one asked for;\n- NOT GEOGRAPHIC — the number is a mobile, and mobile numbering is not tied to a place anywhere in the world. VERIFIED 2026-09-10: Italy has 0 geocoding entries for 393 (mobile) and 121 for 390 (landline). Returning \"nothing found\" here would be a lie; the UI must be able to say why;\n- no data — the country or prefix simply is not covered.\nCollapsing these into Option<String> loses exactly the honesty R2 and R8 ask for.\n\nLANGUAGE FALLBACK (R7), in order: the user's language, then English, then the bare prefix with no name. Never a blank, never an untranslated key. This is the NORMAL path, not an edge case — measured coverage: English 151 countries; Italian 2; German 5; Chinese 2. An Italian user gets Italian names for Italy and Switzerland and English everywhere else.\n\nACCURACY IS APPROXIMATE, and the type should not pretend otherwise. Number portability means a landline can keep its number after moving. The data is a good guide, not a fact about where a caller is.\n\nWHAT TO BUILD:\n1. A Located result covering the cases above, carrying the language actually used.\n2. A holder for several loaded datasets, ordered by preference, that tries each in turn.\n3. Loading datasets from bytes. The core must not read files — the shells own IO — so take bytes or an already-parsed Dataset.\n4. Deciding \"not geographic\" from the number's type via the phonenumber metadata, not by guessing from an empty lookup: a missing entry and a mobile are different answers.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code.\n- Guidelines §5 / R7: no user-facing English in the core. Return facts and let the shell word them.\n- Runs app-side, not in the iOS extension — see the note in core/src/dataset.rs.\n\nEDGE CASES to test: a landline in a covered country; a mobile in the same country; a country with no data in any loaded language; a language that covers the country and one that does not, proving fallback; an empty dataset list; a number shorter than any prefix; the same number in two languages giving two names.\n\nDONE WHEN. Every case above is distinguishable in the result, fallback is proven by test rather than asserted, and cargo test / fmt / clippy -D warnings / both lints pass. Fixtures in core/tests/.\n\n---\n**Completion summary:**\nSHIPPED. Commit 67bd36a.\n\ncore/src/geocode.rs (new), core/tests/geocode.rs (13 tests), core/tests/real_check.rs (1 ignored test against the real packed data). expand.rs::descriptors_of made pub(crate) so the number-type taxonomy is listed once.\n\nAPI. geocode(number, &Places, &Database) -> Located, and is_geographic(number, &Database) -> bool. Places holds parsed datasets in preference order; the core never opens a file, because an iOS extension and an Android app disagree about where bytes come from.\n\nA CRATE BUG, FOUND AND WORKED AROUND — the substance of this task. PhoneNumber::number_type builds the national number with `value().to_string()`, which drops leading zeros. Italy's leading zero is part of the number, so number_type returns Unknown for EVERY Italian landline. The crate's own is_valid_with uses `Display`, which keeps the zeros, so the two disagree: +390111234567 is valid and typeless at the same time. Probed directly:\n  +390111234567  valid=true  type=Unknown\n  +442012345678  valid=true  type=FixedLine\n  +393331234567  valid=true  type=Mobile\nGeography is therefore derived here from the Display form and the descriptors, not from number_type. Without this every Italian landline would have reported NotGeographic and nothing would have failed.\n\nTHE SAME BUG BIT THE DATASET KEY. digits_of first used `national().value()`, producing 39111234567 where the data is keyed 39011234567, so every Italian lookup missed. Both now go through Display. This is the third time the trunk-zero has caused a silent wrong answer in this project — the first was in normalize (T006). Worth remembering that in this crate `value()` is almost always the wrong one to reach for.\n\nDECISION — three outcomes, not Option<String>. Place{name, language}, NotGeographic, NoData, plus NotANumber. A mobile and an uncovered country both find nothing in the place data, and they are completely different things to tell someone: one is a gap that better packaging would close, the other is a question that does not apply anywhere in the world. Verified against the real data: Italy has 0 geocoding entries for 393 and 121 for 390.\n\nDECISION — is_geographic is public separately. A location rule cannot match a mobile, and the UI must say so while the rule is being written rather than when a call slips through. It needs no place data, only the metadata.\n\nDECISION — FixedLineOrMobile counts as geographic. In territories that cannot tell the two apart the fixed-line pattern matches, and refusing to look would throw away a usable answer for every number in those countries. Unknown does not short-circuit either: claiming a number is nowhere on the strength of metadata that does not recognise it would overstate what is known, so the lookup proceeds and the data answers.\n\nThe result carries which language answered. English covers 151 countries and Italian covers 2, so falling back is the normal path and the UI should not have to guess which language it is showing.\n\nVERIFIED. cargo test --all: 133 pass, 2 ignored, 0 fail. fmt, clippy --all-targets -D warnings, §1 lint and the vendored-data check all clean. UniFFI bindings still generate. Against the REAL packed datasets, not only fixtures: +390111234567 to Torino (it), +390101234567 to Genova (it), +390212345678 to Milano (it), +442012345678 to London (en) by fallback, +393331234567 to NotGeographic. That test is ignored by default because it needs build-datasets to have run first.\n\nNOT DONE HERE. The reverse direction — a place to its prefixes — is P004(F002)/T017, which also has to fix the one-prefix assumption in PrefixSource: \"Turin\" is 3 prefixes in the Italian data and \"Guangzhou, Guangdong\" is 1,565, so a location rule today would silently block a fraction of a city. Nothing loads datasets from disk in the core, by design. Nothing is exported over UniFFI; that is P005.\n\nUNVERIFIED. Never run on a device or through Swift or Kotlin. Accuracy is approximate by nature — numbers are portable, so the data says where a number was issued, not where the caller is. That caveat is documented in the module but has no expression in the type, and the UI will need to carry it.",
+      "descriptionUpdatedAt": "2026-09-10T14:45:51.000Z",
       "notes": "",
       "statusLog": [
         {
@@ -47,6 +47,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-002-in-progress-done",
+          "date": "2026-09-10T14:45:50.999Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "SHIPPED. Commit 67bd36a.\n\ncore/src/geocode.rs (new), core/tests/geocode.rs (13 tests), core/tests/real_check.rs (1 ignored test against the real packed data). expand.rs::descriptors_of made pub(crate) so the number-type taxonomy is listed once.\n\nAPI. geocode(number, &Places, &Database) -> Located, and is_geographic(number, &Database) -> bool. Places holds parsed datasets in preference order; the core never opens a file, because an iOS extension and an Android app disagree about where bytes come from.\n\nA CRATE BUG, FOUND AND WORKED AROUND — the substance of this task. PhoneNumber::number_type builds the national number with `value().to_string()`, which drops leading zeros. Italy's leading zero is part of the number, so number_type returns Unknown for EVERY Italian landline. The crate's own is_valid_with uses `Display`, which keeps the zeros, so the two disagree: +390111234567 is valid and typeless at the same time. Probed directly:\n  +390111234567  valid=true  type=Unknown\n  +442012345678  valid=true  type=FixedLine\n  +393331234567  valid=true  type=Mobile\nGeography is therefore derived here from the Display form and the descriptors, not from number_type. Without this every Italian landline would have reported NotGeographic and nothing would have failed.\n\nTHE SAME BUG BIT THE DATASET KEY. digits_of first used `national().value()`, producing 39111234567 where the data is keyed 39011234567, so every Italian lookup missed. Both now go through Display. This is the third time the trunk-zero has caused a silent wrong answer in this project — the first was in normalize (T006). Worth remembering that in this crate `value()` is almost always the wrong one to reach for.\n\nDECISION — three outcomes, not Option<String>. Place{name, language}, NotGeographic, NoData, plus NotANumber. A mobile and an uncovered country both find nothing in the place data, and they are completely different things to tell someone: one is a gap that better packaging would close, the other is a question that does not apply anywhere in the world. Verified against the real data: Italy has 0 geocoding entries for 393 and 121 for 390.\n\nDECISION — is_geographic is public separately. A location rule cannot match a mobile, and the UI must say so while the rule is being written rather than when a call slips through. It needs no place data, only the metadata.\n\nDECISION — FixedLineOrMobile counts as geographic. In territories that cannot tell the two apart the fixed-line pattern matches, and refusing to look would throw away a usable answer for every number in those countries. Unknown does not short-circuit either: claiming a number is nowhere on the strength of metadata that does not recognise it would overstate what is known, so the lookup proceeds and the data answers.\n\nThe result carries which language answered. English covers 151 countries and Italian covers 2, so falling back is the normal path and the UI should not have to guess which language it is showing.\n\nVERIFIED. cargo test --all: 133 pass, 2 ignored, 0 fail. fmt, clippy --all-targets -D warnings, §1 lint and the vendored-data check all clean. UniFFI bindings still generate. Against the REAL packed datasets, not only fixtures: +390111234567 to Torino (it), +390101234567 to Genova (it), +390212345678 to Milano (it), +442012345678 to London (en) by fallback, +393331234567 to NotGeographic. That test is ignored by default because it needs build-datasets to have run first.\n\nNOT DONE HERE. The reverse direction — a place to its prefixes — is P004(F002)/T017, which also has to fix the one-prefix assumption in PrefixSource: \"Turin\" is 3 prefixes in the Italian data and \"Guangzhou, Guangdong\" is 1,565, so a location rule today would silently block a fraction of a city. Nothing loads datasets from disk in the core, by design. Nothing is exported over UniFFI; that is P005.\n\nUNVERIFIED. Never run on a device or through Swift or Kotlin. Accuracy is approximate by nature — numbers are portable, so the data says where a number was issued, not where the caller is. That caveat is documented in the module but has no expression in the type, and the UI will need to carry it."
         }
       ],
       "decisions": [],
@@ -56,55 +64,55 @@
           "id": "55948bb6-6597-422c-9612-9a3f612218af-check-001-geocode-number-languages-datasets-located-in-core-src-geocode-rs",
           "number": 1,
           "title": "geocode(number, languages, datasets) -> Located in core/src/geocode.rs",
-          "checked": false
+          "checked": true
         },
         {
           "id": "55948bb6-6597-422c-9612-9a3f612218af-check-002-result-distinguishes-place-not-geographic-no-data",
           "number": 2,
           "title": "Result distinguishes place / not-geographic / no-data",
-          "checked": false
+          "checked": true
         },
         {
           "id": "55948bb6-6597-422c-9612-9a3f612218af-check-003-result-carries-which-language-actually-supplied-the-name",
           "number": 3,
           "title": "Result carries which language actually supplied the name",
-          "checked": false
+          "checked": true
         },
         {
           "id": "55948bb6-6597-422c-9612-9a3f612218af-check-004-fallback-order-user-language-english-bare-prefix-proven-by-test",
           "number": 4,
           "title": "Fallback order user language, English, bare prefix, proven by test",
-          "checked": false
+          "checked": true
         },
         {
           "id": "55948bb6-6597-422c-9612-9a3f612218af-check-005-not-geographic-decided-from-number-type-not-from-an-empty-lookup",
           "number": 5,
           "title": "Not-geographic decided from number type, not from an empty lookup",
-          "checked": false
+          "checked": true
         },
         {
           "id": "55948bb6-6597-422c-9612-9a3f612218af-check-006-core-takes-bytes-or-a-parsed-dataset-never-reads-files",
           "number": 6,
           "title": "Core takes bytes or a parsed Dataset, never reads files",
-          "checked": false
+          "checked": true
         },
         {
           "id": "55948bb6-6597-422c-9612-9a3f612218af-check-007-no-user-facing-english-in-the-core",
           "number": 7,
           "title": "No user-facing English in the core",
-          "checked": false
+          "checked": true
         },
         {
           "id": "55948bb6-6597-422c-9612-9a3f612218af-check-008-tests-for-every-edge-case-in-the-description",
           "number": 8,
           "title": "Tests for every edge case in the description",
-          "checked": false
+          "checked": true
         },
         {
           "id": "55948bb6-6597-422c-9612-9a3f612218af-check-009-cargo-test-fmt-clippy-d-warnings-both-lints",
           "number": 9,
           "title": "cargo test, fmt, clippy -D warnings, both lints",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -112,9 +120,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-10T14:40:41.866Z",
-      "completedAt": "",
+      "completedAt": "2026-09-10T14:45:50.999Z",
       "createdAt": "2026-09-10T14:40:12.725Z",
-      "updatedAt": "2026-09-10T14:40:41.866Z",
+      "updatedAt": "2026-09-10T14:45:50.999Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
@@ -211,7 +219,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:16.417Z",
-  "updatedAt": "2026-09-10T14:40:41.866Z",
+  "updatedAt": "2026-09-10T14:45:50.999Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
