@@ -26,7 +26,8 @@ pub mod rule;
 
 pub use evaluate::{evaluate, Call, Verdict, E164};
 pub use expand::{
-    expand_matcher, expand_rules, expand_rules_to_vec, BlockList, Budget, Expansion, NotExpandable,
+    expand_matcher, expand_rules, expand_rules_to_vec, upper_bound, BlockList, Budget, Expansion,
+    NotExpandable,
 };
 pub use explain::{explain, Explanation, Surface, Verdict as PlatformVerdict};
 pub use normalize::{normalize, NormalizeError, Normalized};

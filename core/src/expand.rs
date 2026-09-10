@@ -281,26 +281,61 @@ pub fn expand_matcher<'a>(
     database: &'a Database,
     budget: Budget,
 ) -> Expansion<'a> {
+    let prepared = match prepare(matcher, database) {
+        Ok(p) => p,
+        Err(reason) => return Expansion::NotExpandable(reason),
+    };
+    finish(prepared, budget)
+}
+
+/// The most numbers a matcher could cover, without generating any of them.
+///
+/// This is the ceiling the possible lengths allow, so it is exact wherever the
+/// validating pattern leaves the tail alone — which is most places, Germany and
+/// Italy included. Where the tail is constrained the real count is lower, by at
+/// most about tenfold in what has been measured.
+///
+/// Cheap on purpose: it answers for a German area code, whose real ceiling is
+/// around 10^13, in the time it takes to add eleven numbers together.
+pub fn upper_bound(matcher: &Matcher, database: &Database) -> Result<u64, NotExpandable> {
+    let prepared = prepare(matcher, database)?;
+    Ok(ceiling(&prepared.templates))
+}
+
+/// Everything needed to generate a matcher's numbers.
+struct Prepared<'a> {
+    country_code: u16,
+    templates: Vec<Template>,
+    descriptors: Vec<&'a Descriptor>,
+}
+
+fn ceiling(templates: &[Template]) -> u64 {
+    templates
+        .iter()
+        .fold(0u64, |acc, t| acc.saturating_add(t.candidates()))
+}
+
+fn prepare<'a>(matcher: &Matcher, database: &'a Database) -> Result<Prepared<'a>, NotExpandable> {
     // Only the leading fixed digits can say which country this is.
     let leading = match matcher {
-        Matcher::CallerId(_) => return Expansion::NotExpandable(NotExpandable::CallerId),
-        Matcher::EndsWith(_) => return Expansion::NotExpandable(NotExpandable::Suffix),
+        Matcher::CallerId(_) => return Err(NotExpandable::CallerId),
+        Matcher::EndsWith(_) => return Err(NotExpandable::Suffix),
         Matcher::Exact(d) | Matcher::StartsWith(d) => d.as_str().to_string(),
         Matcher::Pattern(p) => p.fixed_prefix(),
     };
 
     let Some((code, code_len)) = split_country(&leading, database) else {
-        return Expansion::NotExpandable(NotExpandable::UnknownCountry);
+        return Err(NotExpandable::UnknownCountry);
     };
     let national = &leading[code_len..];
 
     let metas = match database.by_code(&code) {
         Some(m) => m,
-        None => return Expansion::NotExpandable(NotExpandable::UnknownCountry),
+        None => return Err(NotExpandable::UnknownCountry),
     };
     let descriptors: Vec<&Descriptor> = metas.iter().flat_map(|m| descriptors_of(m)).collect();
     if descriptors.is_empty() {
-        return Expansion::NotExpandable(NotExpandable::NoLengths);
+        return Err(NotExpandable::NoLengths);
     }
 
     let templates = match matcher {
@@ -349,23 +384,34 @@ pub fn expand_matcher<'a>(
     };
 
     if templates.is_empty() {
-        return Expansion::NotExpandable(NotExpandable::NoLengths);
+        return Err(NotExpandable::NoLengths);
     }
 
-    // The ceiling, before the pattern is applied. Where the pattern does not
-    // constrain the tail — which is most places, including Germany and Italy —
-    // this is the exact count. It is cheap, so it is worth asking first: no
-    // amount of pattern pruning brings 10^13 under a budget of millions.
-    let upper_bound = templates
-        .iter()
-        .fold(0u64, |acc, t| acc.saturating_add(t.candidates()));
+    Ok(Prepared {
+        country_code: code,
+        templates,
+        descriptors,
+    })
+}
+
+/// Count the prepared shapes, or report that there are too many to bother.
+fn finish(prepared: Prepared<'_>, budget: Budget) -> Expansion<'_> {
+    let Prepared {
+        country_code,
+        templates,
+        descriptors,
+    } = prepared;
+
+    // Ask the cheap question first: no amount of pattern pruning brings 10^13
+    // under a budget of millions.
+    let upper_bound = ceiling(&templates);
 
     if upper_bound > budget.max_candidates {
         return Expansion::TooBroad { upper_bound };
     }
 
     let mut numbers = Numbers {
-        country_code: code,
+        country_code,
         odometer: vec![
             0;
             templates[0]

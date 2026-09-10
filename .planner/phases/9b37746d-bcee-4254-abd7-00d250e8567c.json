@@ -353,11 +353,20 @@
       "priority": 4,
       "shortName": "recompute-r2-s-digit-distribut",
       "title": "Recompute R2's digit distribution against the measured cap",
-      "status": "planned",
+      "status": "in-progress",
       "description": "DEPENDS ON P003(F002)/T010 — this uses the real expander.\n\nWHY THIS EXISTS. R2 currently states: 226/244 countries need 4 digits or fewer pinned for mobile, 223/245 for landline, with a hard tail of DE fixedLine 10, AT mobile 8, DE mobile 6, IT fixedLine 7. Both halves of that are wrong, in opposite directions, and the numbers are quoted in the requirement as if measured:\n\n1. They were computed against an assumed cap of 1,000,000. The cap was measured on 2026-09-08 as between 1,900,000 and 2,000,000 (P001(F001)/T001). Roughly double the budget means fewer digits need pinning, so the published figures are PESSIMISTIC — the product promises less than it can deliver.\n\n2. They came from Python prototypes that only SUMMED possibleLengths and never applied the validating pattern. That overestimates expansion badly, which pushes the figures pessimistic again, and much harder for landlines. DE fixedLine summed to 11 trillion, which is not a real number of German landlines.\n\nSo the figures are wrong twice over, both times in the direction of understating what the app can do. Fixing them changes what the UI can promise and is easy to forget, because nothing fails while they are wrong.\n\nGOAL. Recompute the distribution across every territory in the database, using T010's expander with the validating pattern applied and the measured cap injected. Produce, per country and number type, the smallest number of pinned digits whose expansion fits the budget.\n\nWHAT TO PRODUCE:\n1. A test or example in core/ that computes this from the current metadata and is runnable on demand. Not a fixture pasted into a file — metadata changes, and R5 makes over-the-air updates a requirement, so a figure that cannot be recomputed will rot exactly like the current one has.\n2. The recomputed summary written into R2's description via the planner, replacing the stale figures, with a note saying which cap and which method produced them.\n3. The new hard tail — the countries and types that still need the most digits pinned. These are the cases the UI has to be honest about, so they matter more than the headline count.\n\nCONSTRAINTS.\n- Guidelines §1: no country in code. Enumerate territories from the database (Database::iter exists), never from a list in a source file.\n- Guidelines §4: the cap is injected configuration from F001, never a literal. Report which value produced the figures.\n- This is analysis over 245 territories and many lengths, so it may be slow. Do not put it in the default test run if it takes long enough to hurt CI — mark it ignored and say in the completion note how to run it.\n\nHONESTY. Report what is computed, including any territory the expander cannot handle, rather than quietly excluding it from the denominator. The current figures say 244 and 245 for two different types without explaining the difference; the new ones should account for every territory or say why not.\n\nDONE WHEN. The figures are recomputed from real metadata with the regex applied and the measured cap, R2's description is updated through the planner and read back to confirm it persisted, and the recomputation is repeatable by a documented command.",
       "descriptionUpdatedAt": "2026-09-10T06:20:25.016Z",
       "notes": "",
-      "statusLog": [],
+      "statusLog": [
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-001-planned-in-progress",
+          "date": "2026-09-10T08:04:51.883Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
       "decisions": [],
       "acceptedDecisions": [],
       "checklist": [
@@ -414,11 +423,16 @@
       "dependsOn": [],
       "pauseSnapshot": null,
       "pauseHistory": [],
-      "startedAt": "",
+      "startedAt": "2026-09-10T08:04:51.883Z",
       "completedAt": "",
       "createdAt": "2026-09-10T06:20:25.005Z",
-      "updatedAt": "2026-09-10T06:20:25.005Z",
-      "sessionInfo": []
+      "updatedAt": "2026-09-10T08:04:51.883Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-10T08:04:51.857Z"
+        }
+      ]
     },
     {
       "id": "45fa2832-5e8e-400b-a253-c14f801ac92d",
@@ -519,7 +533,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:03.596Z",
-  "updatedAt": "2026-09-10T08:00:50.478Z",
+  "updatedAt": "2026-09-10T08:04:51.883Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -538,7 +552,7 @@
   "sessionInfo": [
     {
       "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
-      "createdAt": "2026-09-10T07:56:45.178Z"
+      "createdAt": "2026-09-10T08:04:51.857Z"
     }
   ]
 }
