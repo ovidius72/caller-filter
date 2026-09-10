@@ -19,9 +19,11 @@
 uniffi::setup_scaffolding!();
 
 pub mod evaluate;
+pub mod normalize;
 pub mod rule;
 
 pub use evaluate::{evaluate, Call, Verdict, E164};
+pub use normalize::{normalize, NormalizeError, Normalized};
 pub use rule::{
     Authored, Conflict, Digits, Effect, LocationRef, Matcher, Pattern, PrefixSource, Rule,
     RuleError, RuleId, RuleSet, Specificity,

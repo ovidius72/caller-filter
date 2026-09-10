@@ -22,15 +22,373 @@
   "decisions": [],
   "acceptedDecisions": [],
   "completionCriteria": [],
-  "taskIds": [],
-  "tasks": [],
+  "taskIds": [
+    "3864d8c6-390b-47c6-94e2-8ea048f376ab",
+    "7419af3e-aa63-41cf-a607-67e487233f9e",
+    "2647e99d-31e0-49c8-8060-5d7f77eda4f7",
+    "ef0257c5-59a4-471d-96ce-57a25bfb5cd1"
+  ],
+  "tasks": [
+    {
+      "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab",
+      "phaseId": "9b37746d-bcee-4254-abd7-00d250e8567c",
+      "number": 6,
+      "shortId": "P3H4C",
+      "priority": 1,
+      "shortName": "normalize-raw-input-to-e-164",
+      "title": "Normalize raw input to E.164",
+      "status": "in-progress",
+      "description": "CURRENT STATE. core/src/evaluate.rs defines E164<'a>, which borrows and validates shape only — it refuses anything that is not digits with an optional leading `+`. Nothing produces one from what a user or an OS actually hands over. The phonenumber crate (0.3.10+9.0.33) is already a dependency (core/Cargo.toml) and is currently unused.\n\nGOAL. normalize(raw: &str, default_region) -> Result<Normalized, ParseError>, in core/src/normalize.rs (new). Two callers, and they differ:\n- The OS hands over a number when a call or message arrives. Android gives a tel: URI from Call.Details; iOS SMS gives ILMessageFilterQueryRequest.sender.\n- The user types a number when writing a rule, often in national form with no country code.\n\nVERIFIED API, checked against the crate source on 2026-09-09:\n- phonenumber::parse(Option<Country>, raw) -> Result<PhoneNumber, ParseError>\n- phonenumber::metadata::DATABASE is the bundled database; Database::by_id(region) -> Option<&Metadata>\n- PhoneNumber formats to E.164 via phonenumber::format(&n).mode(Mode::E164)\nDo not re-derive this; do confirm the exact signatures compile rather than trusting this note.\n\nWHAT TO BUILD:\n1. normalize() producing an owned normalized number that E164::new accepts. E164 borrows, so return an owning type and let callers borrow from it — do not fight the lifetime by allocating inside evaluate.\n2. A default region for the \"user typed a national number\" case. It is a parameter, never a constant: Guidelines §1 forbids a country in code. The shells pass the device region.\n3. Distinguish, in the error, between input that is not a number at all and input that parses but is not valid for its region. The UI must say something different for each — \"that is not a number\" versus \"that is not a valid number in this country\" — and R2's honesty rule means never quietly accepting the second.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or length in code. The default region is data passed in.\n- Guidelines §4: nothing measured written as a literal.\n- Runs on the Android call path inside the five-second screening budget, so parsing must not be gratuitously slow, though this is far cheaper than the budget.\n\nEDGE CASES to test: a number already in E.164; a national number with the default region supplied; a national number with no region supplied (must fail, not guess); leading/trailing whitespace and the separators users type; an extension; a short code; a number valid in one region and not another; empty input; letters.\n\nDONE WHEN. normalize() feeds evaluate() end to end in a test, both error cases are distinguishable, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass. Number-shaped fixtures go in core/tests/, not core/src — the §1 lint scans core/src and that strictness is worth keeping.",
+      "descriptionUpdatedAt": "2026-09-10T06:19:18.007Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-001-planned-in-progress",
+          "date": "2026-09-10T06:20:33.693Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-001-normalize-raw-default-region-in-core-src-normalize-rs",
+          "number": 1,
+          "title": "normalize(raw, default_region) in core/src/normalize.rs",
+          "checked": false
+        },
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-002-owned-normalized-type-that-e164-new-accepts-without-allocating-in-evaluate",
+          "number": 2,
+          "title": "Owned normalized type that E164::new accepts without allocating in evaluate",
+          "checked": false
+        },
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-003-default-region-is-a-parameter-never-a-constant",
+          "number": 3,
+          "title": "Default region is a parameter, never a constant",
+          "checked": false
+        },
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-004-errors-distinguish-not-a-number-from-not-valid-in-this-region",
+          "number": 4,
+          "title": "Errors distinguish 'not a number' from 'not valid in this region'",
+          "checked": false
+        },
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-005-end-to-end-test-normalize-feeds-evaluate",
+          "number": 5,
+          "title": "End-to-end test: normalize feeds evaluate",
+          "checked": false
+        },
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-006-tests-for-every-edge-case-in-the-description",
+          "number": 6,
+          "title": "Tests for every edge case in the description",
+          "checked": false
+        },
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-007-number-fixtures-in-core-tests-not-core-src",
+          "number": 7,
+          "title": "Number fixtures in core/tests/, not core/src",
+          "checked": false
+        },
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-008-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
+          "number": 8,
+          "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-10T06:20:33.693Z",
+      "completedAt": "",
+      "createdAt": "2026-09-10T06:19:17.992Z",
+      "updatedAt": "2026-09-10T06:20:33.693Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-10T06:20:33.661Z"
+        }
+      ]
+    },
+    {
+      "id": "7419af3e-aa63-41cf-a607-67e487233f9e",
+      "phaseId": "9b37746d-bcee-4254-abd7-00d250e8567c",
+      "number": 10,
+      "shortId": "ZKPP3",
+      "priority": 2,
+      "shortName": "range-expansion-for-ios-regex",
+      "title": "Range expansion for iOS, regex-pruned and streaming",
+      "status": "planned",
+      "description": "DEPENDS ON P003(F002)/T006 for normalization, and on the rule model in P002(F002)/T004.\n\nWHY THIS EXISTS. iOS runs no app code when a call arrives, so rules cannot be evaluated live there. They are turned into a list of exact numbers ahead of time and handed to CallKit. This is the only shipped surface where a rule cannot run live, and it is where R2's promise meets a hard platform limit.\n\nGOAL. expand(rule, metadata, limit) yielding ascending int64 numbers, or reporting TooBroad(count), in core/src/expand.rs (new).\n\nTHE REGEX MUST PRUNE — this is the whole point of the task. Summing possibleLengths alone materially overestimates. Measured worst case: DE fixedLine has ELEVEN possible lengths (5 to 15), so a naive sum gives 11,111,111,111,000 entries for a two-digit prefix, where the validating pattern rejects the overwhelming majority. The Python prototypes that produced the plan's figures only summed lengths and are knowingly wrong here. Do not reproduce that.\n\nVERIFIED API, checked against the crate source on 2026-09-09 — confirm it compiles, do not trust this note blindly:\n- phonenumber::metadata::DATABASE, and Database::by_id(region) -> Option<&Metadata>\n- Metadata::descriptors() -> &Descriptors; Descriptors::get(Type) -> Option<&Descriptor>\n- Descriptor::possible_length() -> &[u16]\n- Descriptor::is_match(&str) -> bool, which applies nationalNumberPattern\nDescriptors::get returns Option because not every country defines every type — do not assume a fixed set (Guidelines §1).\nDatabase::load(path) and Database::parse(content) exist, so F003's over-the-air dataset can replace the bundled one later. Take the database as a parameter rather than reaching for DATABASE inside, or that future is closed off.\n\nEXPANDABILITY DIFFERS BY MATCHER, and this must be explicit rather than discovered:\n- Exact: one number.\n- StartsWith / Prefix: the range under that prefix, pruned by the validating pattern per possible length.\n- Pattern: the cartesian product over wildcard positions, pruned the same way.\n- EndsWith: enumerating every valid number with a given tail means walking a country's whole number space. This will almost always be too broad for iOS. Report it honestly rather than attempting it and timing out.\n- CallerId: cannot be expanded at all. iOS calls have no caller-ID matching, so such a rule simply does not apply there and the user must be told.\n\nALLOW-EXCEPTIONS BY SUBTRACTION. CallKit has no allow list, so an allow rule inside a deny is resolved here by not emitting those numbers — 999 entries instead of 1000. An allow rule with no enclosing deny expands to nothing, because absence already means allowed.\n\nOUTPUT CONTRACT. Strictly ascending int64, no duplicates. iOS requires this (addBlockingEntry withNextSequentialPhoneNumber:) and an out-of-order entry fails the entire extension request, not just that entry. Generate in order and assert monotonicity in a test rather than sorting afterwards.\n\nSTREAMING, NOT MATERIALISING. The extension runs under tight memory limits. Yield incrementally; never build a full Vec of a million numbers. An Iterator is the obvious shape.\n\nTHE LIMIT IS INJECTED. The maximum entry count comes from F001's measurement as configuration (EntryLimit in core/src/lib.rs), never a constant (Guidelines §4). Counting must stop early once the limit is exceeded — do not count to eleven trillion to report TooBroad.\n\nEDGE CASES to test: a prefix that expands to exactly the limit, and one over it; a pattern where the validating regex rejects most candidates; a rule for a country whose descriptor for that type is absent; an allow fully inside a deny; an allow only partly overlapping a deny; two denies that overlap, so a number would otherwise be emitted twice; an EndsWith rule; a CallerId rule.\n\nDONE WHEN. Expansion is correct and ascending, the regex demonstrably prunes (a test asserting a count far below the naive length-sum for a real multi-length country), counting stops early past the limit, memory stays flat for a large expansion, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass. Fixtures in core/tests/.",
+      "descriptionUpdatedAt": "2026-09-10T06:19:43.384Z",
+      "notes": "",
+      "statusLog": [],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-001-expand-rule-database-limit-as-a-streaming-iterator-in-core-src-expand-rs",
+          "number": 1,
+          "title": "expand(rule, database, limit) as a streaming Iterator in core/src/expand.rs",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-002-database-taken-as-a-parameter-not-reached-for-globally",
+          "number": 2,
+          "title": "Database taken as a parameter, not reached for globally",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-003-validating-pattern-applied-per-candidate-not-just-possiblelengths-summed",
+          "number": 3,
+          "title": "Validating pattern applied per candidate, not just possibleLengths summed",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-004-test-asserting-the-pruned-count-is-far-below-the-naive-length-sum",
+          "number": 4,
+          "title": "Test asserting the pruned count is far below the naive length-sum",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-005-ascending-int64-no-duplicates-monotonicity-asserted-not-sorted",
+          "number": 5,
+          "title": "Ascending int64, no duplicates, monotonicity asserted not sorted",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-006-allow-exceptions-resolved-by-not-emitting-those-numbers",
+          "number": 6,
+          "title": "Allow-exceptions resolved by not emitting those numbers",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-007-endswith-and-callerid-reported-as-not-expandable-rather-than-attempted",
+          "number": 7,
+          "title": "EndsWith and CallerId reported as not expandable rather than attempted",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-008-counting-stops-early-once-the-injected-limit-is-exceeded",
+          "number": 8,
+          "title": "Counting stops early once the injected limit is exceeded",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-009-absent-descriptor-for-a-type-handled-not-assumed-present",
+          "number": 9,
+          "title": "Absent descriptor for a type handled, not assumed present",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-010-memory-stays-flat-for-a-large-expansion",
+          "number": 10,
+          "title": "Memory stays flat for a large expansion",
+          "checked": false
+        },
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-011-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
+          "number": 11,
+          "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "",
+      "completedAt": "",
+      "createdAt": "2026-09-10T06:19:43.347Z",
+      "updatedAt": "2026-09-10T06:19:43.347Z",
+      "sessionInfo": []
+    },
+    {
+      "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7",
+      "phaseId": "9b37746d-bcee-4254-abd7-00d250e8567c",
+      "number": 11,
+      "shortId": "SG6S5",
+      "priority": 3,
+      "shortName": "explain-rule-expansion-size-an",
+      "title": "explain(rule): expansion size and per-platform verdict",
+      "status": "planned",
+      "description": "DEPENDS ON P003(F002)/T010 for the expansion count.\n\nWHY THIS EXISTS. R2's honesty requirement: show each rule's computed expansion size and per-platform verdict from real data, and never silently drop, narrow or partially apply a rule. This is the function that makes that possible, and it is what R8's UI reads. Without it the app either lies by omission or the user discovers a rule does nothing when a call gets through.\n\nGOAL. explain(rule, database, limits) -> Explanation, in core/src/explain.rs (new).\n\nTHE VERDICTS DIFFER BY PLATFORM, and each is a fact already verified in F001 — read F001's description for the evidence rather than re-deriving:\n- Android calls: every rule type evaluates live. No expansion, no limit, always applies. The exception is a withheld caller, which never reaches a screening service at all — no rule can ever act on one, and users will expect otherwise.\n- iOS SMS: every rule type evaluates live. Verdict caps at the Junk folder, not deletion, and only for unknown senders.\n- iOS calls: pre-expanded only. A rule fits, or it is too broad, or it cannot be expressed at all. A CallerId rule cannot apply. An EndsWith rule will almost always be too broad. An allow rule with no enclosing deny is a no-op, and the UI must not imply otherwise.\n- Android SMS: out of scope entirely (R2, decided 2026-09-08) — blocking there means becoming the default SMS app.\n\nWHAT TO BUILD. An Explanation carrying, per rule: the expansion count where one applies, and a per-surface verdict that distinguishes at least: applies live; fits within the budget; too broad for this platform; cannot be expressed on this platform; and no effect. Those are distinct user-facing situations and collapsing them loses the honesty R2 asks for.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or length in code; no platform's limit written as a literal.\n- Guidelines §4: the entry budget is injected configuration from F001's measurement, never a constant.\n- Guidelines §5 and R8: the user sees plain language, never an entry count presented as a setting. This function returns facts; wording is the shell's job. Do not put user-facing English in the core — R7 makes UI text a data file, not code.\n- The surfaces themselves must be data-driven enough that adding one (HarmonyOS is explicitly contemplated in F002) does not mean rewriting this.\n\nEDGE CASES to test: a rule that fits on iOS and applies live on Android; one too broad for iOS but fine on Android; a CallerId rule, which is live on Android and inexpressible on iOS calls; an allow with no enclosing deny; a rule whose country descriptor for that type is absent; a rule whose expansion is exactly at the limit.\n\nDONE WHEN. Every verdict above is produced from real metadata, no user-facing wording lives in the core, the budget is injected, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass. Fixtures in core/tests/.",
+      "descriptionUpdatedAt": "2026-09-10T06:20:03.082Z",
+      "notes": "",
+      "statusLog": [],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-001-explain-rule-database-limits-explanation-in-core-src-explain-rs",
+          "number": 1,
+          "title": "explain(rule, database, limits) -> Explanation in core/src/explain.rs",
+          "checked": false
+        },
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-002-verdicts-distinguish-live-fits-too-broad-inexpressible-no-effect",
+          "number": 2,
+          "title": "Verdicts distinguish live / fits / too broad / inexpressible / no effect",
+          "checked": false
+        },
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-003-per-surface-with-surfaces-data-driven-rather-than-hardcoded",
+          "number": 3,
+          "title": "Per-surface, with surfaces data-driven rather than hardcoded",
+          "checked": false
+        },
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-004-entry-budget-injected-from-f001-s-measurement-never-a-literal",
+          "number": 4,
+          "title": "Entry budget injected from F001's measurement, never a literal",
+          "checked": false
+        },
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-005-no-user-facing-english-in-the-core",
+          "number": 5,
+          "title": "No user-facing English in the core",
+          "checked": false
+        },
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-006-callerid-on-ios-calls-reported-as-inexpressible",
+          "number": 6,
+          "title": "CallerId on iOS calls reported as inexpressible",
+          "checked": false
+        },
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-007-allow-with-no-enclosing-deny-reported-as-no-effect",
+          "number": 7,
+          "title": "Allow with no enclosing deny reported as no effect",
+          "checked": false
+        },
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-008-tests-for-every-edge-case-in-the-description",
+          "number": 8,
+          "title": "Tests for every edge case in the description",
+          "checked": false
+        },
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-009-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
+          "number": 9,
+          "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "",
+      "completedAt": "",
+      "createdAt": "2026-09-10T06:20:03.064Z",
+      "updatedAt": "2026-09-10T06:20:03.064Z",
+      "sessionInfo": []
+    },
+    {
+      "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1",
+      "phaseId": "9b37746d-bcee-4254-abd7-00d250e8567c",
+      "number": 12,
+      "shortId": "2XKD7",
+      "priority": 4,
+      "shortName": "recompute-r2-s-digit-distribut",
+      "title": "Recompute R2's digit distribution against the measured cap",
+      "status": "planned",
+      "description": "DEPENDS ON P003(F002)/T010 — this uses the real expander.\n\nWHY THIS EXISTS. R2 currently states: 226/244 countries need 4 digits or fewer pinned for mobile, 223/245 for landline, with a hard tail of DE fixedLine 10, AT mobile 8, DE mobile 6, IT fixedLine 7. Both halves of that are wrong, in opposite directions, and the numbers are quoted in the requirement as if measured:\n\n1. They were computed against an assumed cap of 1,000,000. The cap was measured on 2026-09-08 as between 1,900,000 and 2,000,000 (P001(F001)/T001). Roughly double the budget means fewer digits need pinning, so the published figures are PESSIMISTIC — the product promises less than it can deliver.\n\n2. They came from Python prototypes that only SUMMED possibleLengths and never applied the validating pattern. That overestimates expansion badly, which pushes the figures pessimistic again, and much harder for landlines. DE fixedLine summed to 11 trillion, which is not a real number of German landlines.\n\nSo the figures are wrong twice over, both times in the direction of understating what the app can do. Fixing them changes what the UI can promise and is easy to forget, because nothing fails while they are wrong.\n\nGOAL. Recompute the distribution across every territory in the database, using T010's expander with the validating pattern applied and the measured cap injected. Produce, per country and number type, the smallest number of pinned digits whose expansion fits the budget.\n\nWHAT TO PRODUCE:\n1. A test or example in core/ that computes this from the current metadata and is runnable on demand. Not a fixture pasted into a file — metadata changes, and R5 makes over-the-air updates a requirement, so a figure that cannot be recomputed will rot exactly like the current one has.\n2. The recomputed summary written into R2's description via the planner, replacing the stale figures, with a note saying which cap and which method produced them.\n3. The new hard tail — the countries and types that still need the most digits pinned. These are the cases the UI has to be honest about, so they matter more than the headline count.\n\nCONSTRAINTS.\n- Guidelines §1: no country in code. Enumerate territories from the database (Database::iter exists), never from a list in a source file.\n- Guidelines §4: the cap is injected configuration from F001, never a literal. Report which value produced the figures.\n- This is analysis over 245 territories and many lengths, so it may be slow. Do not put it in the default test run if it takes long enough to hurt CI — mark it ignored and say in the completion note how to run it.\n\nHONESTY. Report what is computed, including any territory the expander cannot handle, rather than quietly excluding it from the denominator. The current figures say 244 and 245 for two different types without explaining the difference; the new ones should account for every territory or say why not.\n\nDONE WHEN. The figures are recomputed from real metadata with the regex applied and the measured cap, R2's description is updated through the planner and read back to confirm it persisted, and the recomputation is repeatable by a documented command.",
+      "descriptionUpdatedAt": "2026-09-10T06:20:25.016Z",
+      "notes": "",
+      "statusLog": [],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-001-recomputation-runs-over-every-territory-from-database-iter-not-a-list-in-code",
+          "number": 1,
+          "title": "Recomputation runs over every territory from Database::iter, not a list in code",
+          "checked": false
+        },
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-002-validating-pattern-applied-not-possiblelengths-summed",
+          "number": 2,
+          "title": "Validating pattern applied, not possibleLengths summed",
+          "checked": false
+        },
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-003-measured-cap-injected-and-reported-alongside-the-figures",
+          "number": 3,
+          "title": "Measured cap injected, and reported alongside the figures",
+          "checked": false
+        },
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-004-per-country-and-type-smallest-pinned-digit-count-that-fits",
+          "number": 4,
+          "title": "Per country and type: smallest pinned-digit count that fits",
+          "checked": false
+        },
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-005-new-hard-tail-identified",
+          "number": 5,
+          "title": "New hard tail identified",
+          "checked": false
+        },
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-006-territories-the-expander-cannot-handle-are-reported-not-silently-dropped",
+          "number": 6,
+          "title": "Territories the expander cannot handle are reported, not silently dropped",
+          "checked": false
+        },
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-007-kept-out-of-the-default-test-run-if-slow-with-the-command-documented",
+          "number": 7,
+          "title": "Kept out of the default test run if slow, with the command documented",
+          "checked": false
+        },
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-008-r2-description-updated-through-the-planner-and-read-back-to-confirm",
+          "number": 8,
+          "title": "R2 description updated through the planner and read back to confirm",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "",
+      "completedAt": "",
+      "createdAt": "2026-09-10T06:20:25.005Z",
+      "updatedAt": "2026-09-10T06:20:25.005Z",
+      "sessionInfo": []
+    }
+  ],
   "createdAt": "2026-09-08T08:30:03.596Z",
-  "updatedAt": "2026-09-08T08:30:03.596Z",
+  "updatedAt": "2026-09-10T06:20:33.693Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
   "handoffReadAt": "",
   "handoffHistory": [],
-  "statusLog": [],
-  "sessionInfo": []
+  "statusLog": [
+    {
+      "id": "44e44d9e-db19-48d7-a8ac-42a369d96ac0",
+      "date": "2026-09-10T06:20:33.698Z",
+      "fromStatus": "draft",
+      "toStatus": "in-progress",
+      "title": "draft → in-progress",
+      "description": ""
+    }
+  ],
+  "sessionInfo": [
+    {
+      "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+      "createdAt": "2026-09-10T06:20:33.661Z"
+    }
+  ]
 }
