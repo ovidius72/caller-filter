@@ -138,9 +138,9 @@
       "priority": 2,
       "shortName": "resolve-a-place-to-its-prefixe",
       "title": "Resolve a place to its prefixes, fixing the one-prefix assumption",
-      "status": "in-progress",
-      "description": "DEPENDS ON P004(F002)/T016 for the dataset holder.\n\nA BUG IN THE RULE MODEL, found while reading the real data on 2026-09-10. P002(F002)/T004 defined:\n\n    pub trait PrefixSource {\n        fn prefix_for(&self, location: &LocationRef) -> Option<Digits>;\n    }\n\nand Authored::Location resolves through it to exactly one Matcher::StartsWith. THE DATA DOES NOT WORK THAT WAY. A city routinely has several area codes:\n- \"Turin\" appears 3 times in the Italian data (39011, 390122, 390125).\n- \"Guangzhou, Guangdong\" appears 1,565 times in the Chinese data.\n\nSo \"block Turin\" cannot be represented today. The current model would silently pick one prefix and block a third of the city, which is precisely the silent narrowing R2 forbids. Nothing fails: the rule looks fine, and calls from the other two area codes get through.\n\nGOAL. Make a location resolve to the SET of prefixes that name it, and carry that through the model, the evaluator and expansion without any of them special-casing location.\n\nWHAT TO BUILD:\n1. Replace prefix_for with something returning all matching prefixes. Keep it a trait so the geocoder is injected rather than reached for.\n2. Decide how a multi-prefix location is represented. Two candidates, and this is the real design decision of the task:\n   - resolve one authored rule into several rules, one per prefix — simple, but rule ids stop being one-to-one with what the user wrote, and the UI has to re-group them to show one rule;\n   - give Matcher a variant matching any of a set of prefixes — one rule stays one rule, but specificity, overlap and expansion all need to handle it.\n   Whichever is chosen, write down why in the completion, because both have a cost that shows up later.\n3. Specificity for a multi-prefix match. Prefixes for one city are usually different lengths (39011 is 5, 390122 is 6). The safe reading is the SHORTEST, since that is the broadest thing the rule matches — but say so explicitly rather than leaving it to fall out.\n4. Expansion must cover every prefix, and the result must still be ascending and free of duplicates. Two area codes of a city can overlap in the block list.\n5. Matching a place name is not exact-string business: names carry a region suffix (\"Guangzhou, Guangdong\"), and the UI will offer a picked place rather than typed text. Decide what a LocationRef actually holds and keep it opaque to the core.\n\nALSO REQUIRED BY R2. Location rules match landlines only, because mobile numbering is not geographic anywhere. Verified: Italy has 0 geocoding entries for 393 and 121 for 390. A location rule therefore cannot block a mobile, and explain() should say so on every surface.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code.\n- Guidelines §3: this is filtering logic, so it lives in the core.\n- The evaluator's matching path must stay allocation-free.\n\nEDGE CASES to test: a place with one prefix; a place with three; a place with over a thousand; a place that resolves to nothing, which is legal because metadata changes; two places whose prefixes overlap; a location rule against a country with no geocoding data at all; the same place name in two languages.\n\nDONE WHEN. A location rule with several prefixes blocks all of them, is one rule to the user, expansion stays ascending and duplicate-free, explain() reports the landline-only limit, every P002 and P003 test still passes, and cargo test / fmt / clippy -D warnings / both lints pass.",
-      "descriptionUpdatedAt": "2026-09-10T14:40:36.288Z",
+      "status": "done",
+      "description": "DEPENDS ON P004(F002)/T016 for the dataset holder.\n\nA BUG IN THE RULE MODEL, found while reading the real data on 2026-09-10. P002(F002)/T004 defined:\n\n    pub trait PrefixSource {\n        fn prefix_for(&self, location: &LocationRef) -> Option<Digits>;\n    }\n\nand Authored::Location resolves through it to exactly one Matcher::StartsWith. THE DATA DOES NOT WORK THAT WAY. A city routinely has several area codes:\n- \"Turin\" appears 3 times in the Italian data (39011, 390122, 390125).\n- \"Guangzhou, Guangdong\" appears 1,565 times in the Chinese data.\n\nSo \"block Turin\" cannot be represented today. The current model would silently pick one prefix and block a third of the city, which is precisely the silent narrowing R2 forbids. Nothing fails: the rule looks fine, and calls from the other two area codes get through.\n\nGOAL. Make a location resolve to the SET of prefixes that name it, and carry that through the model, the evaluator and expansion without any of them special-casing location.\n\nWHAT TO BUILD:\n1. Replace prefix_for with something returning all matching prefixes. Keep it a trait so the geocoder is injected rather than reached for.\n2. Decide how a multi-prefix location is represented. Two candidates, and this is the real design decision of the task:\n   - resolve one authored rule into several rules, one per prefix — simple, but rule ids stop being one-to-one with what the user wrote, and the UI has to re-group them to show one rule;\n   - give Matcher a variant matching any of a set of prefixes — one rule stays one rule, but specificity, overlap and expansion all need to handle it.\n   Whichever is chosen, write down why in the completion, because both have a cost that shows up later.\n3. Specificity for a multi-prefix match. Prefixes for one city are usually different lengths (39011 is 5, 390122 is 6). The safe reading is the SHORTEST, since that is the broadest thing the rule matches — but say so explicitly rather than leaving it to fall out.\n4. Expansion must cover every prefix, and the result must still be ascending and free of duplicates. Two area codes of a city can overlap in the block list.\n5. Matching a place name is not exact-string business: names carry a region suffix (\"Guangzhou, Guangdong\"), and the UI will offer a picked place rather than typed text. Decide what a LocationRef actually holds and keep it opaque to the core.\n\nALSO REQUIRED BY R2. Location rules match landlines only, because mobile numbering is not geographic anywhere. Verified: Italy has 0 geocoding entries for 393 and 121 for 390. A location rule therefore cannot block a mobile, and explain() should say so on every surface.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code.\n- Guidelines §3: this is filtering logic, so it lives in the core.\n- The evaluator's matching path must stay allocation-free.\n\nEDGE CASES to test: a place with one prefix; a place with three; a place with over a thousand; a place that resolves to nothing, which is legal because metadata changes; two places whose prefixes overlap; a location rule against a country with no geocoding data at all; the same place name in two languages.\n\nDONE WHEN. A location rule with several prefixes blocks all of them, is one rule to the user, expansion stays ascending and duplicate-free, explain() reports the landline-only limit, every P002 and P003 test still passes, and cargo test / fmt / clippy -D warnings / both lints pass.\n\n---\n**Completion summary:**\nSHIPPED. Commit fc71c3f.\n\ncore/src/rule.rs: new Prefixes type, Matcher::StartsWith widened to hold it, Origin on Rule, LocationRef reshaped, PrefixSource::prefixes_for. core/src/dataset.rs: prefixes_named, names, and Builder::build now returns Result. core/src/geocode.rs: Places implements PrefixSource. core/src/evaluate.rs, expand.rs, explain.rs updated. core/tests/location.rs (new, 15 tests). Every existing test updated to the new shape and still passing.\n\nDECISION — a prefix SET, not several rules. The task named both candidates. One rule staying one rule wins because three separate things depend on it: R2 points the user at \"the rule that did not fit\", explain reports per rule, and a conflict names two rule ids. Splitting a place into several rules would make all three describe something the user never wrote, and the UI would have to re-group them to undo it. The cost — specificity, overlap and expansion all handling a set — is paid once here. A single prefix is a set of one, so there is no second code path anywhere.\n\nDECISION — specificity is the SHORTEST run. A city's area codes differ in length; the rule matches under any of them, so the broadest is what it really is. Ranking by the longest would claim precision the rule does not have and let it beat a genuinely narrower rule. Tested: a three-code place ranks equal to its shortest code and below its longest.\n\nDECISION — contained runs are dropped when the set is built. Every number under 390111234 is already under 39011123, so keeping both changes nothing about what matches — but the ranges overlap, and overlapping ranges emit the same number twice during expansion, which iOS rejects the whole request for. Minimising leaves the runs pairwise disjoint, which is also what makes expansion ordering sound: templates sorted by total length then digits come out ascending across the whole set, because a shorter number is always smaller and at equal length lexicographic order is numeric order. FOUND BY A FAILING TEST, not by reasoning — the first version sorted correctly and still produced duplicates.\n\nDECISION — LocationRef holds the name as the data spells it plus the language that spelling came from. Resolution tries that language first, then the others, so a rule written in one language keeps working after the app switches to another. The core never invents a name; the UI offers places the data contains.\n\nDECISION — Rule carries Origin. Once resolved, a location is indistinguishable from a typed prefix, but only one of them carries a caveat: mobile numbering is not geographic anywhere, so a location rule can only ever match landlines. explain reports Caveat::LandlinesOnly beside the verdicts rather than inside one, because it holds even on surfaces that evaluate live.\n\nSECOND BUG FOUND AND FIXED. Builder::build silently dropped any prefix that would not fit its u32 — more than nine digits. The vendored data tops out at nine so it never fired, but a dropped prefix is a lookup that quietly returns nothing, and no caller could tell that from a place with no data. It now returns DatasetError::PrefixTooLong. Surfaced only because a test fixture used a longer prefix.\n\nVERIFIED. cargo test --all: 148 pass, 2 ignored, 0 fail — up from 133, with every pre-existing test unchanged in intent. fmt, clippy --all-targets -D warnings, §1 lint and the vendored-data check all clean. UniFFI bindings still generate. The real-data check still passes. Covered: a place with one code, with three, with 1,200; a place that resolves to nothing; contained runs collapsing; a country with no data; the same city under two languages; an exact allow still beating a location deny; expansion reaching every run and staying ascending.\n\nA REAL PRODUCT FACT the tests now record: a whole city does not fit on a phone. Turin's area codes leave six to nine digits free, over a billion numbers, so the rule works live on Android and is TooBroad for iOS calls. That is reported, not silently dropped.\n\nPERFORMANCE NOTE. The location suite first took 35 seconds, because an Italian prefix expands across seven possible lengths. Rewritten against a country with a single possible length, it runs in 1.7 seconds with the same coverage. Worth knowing when writing expansion tests: pick the country for its length count, not its familiarity.\n\nUNVERIFIED. Never run on a device or through Swift or Kotlin. Places::prefixes_for scans a whole dataset per call — fine when a rule is written, and it is never on the call path, but it has not been measured against the 269,380-entry English set. Nothing is exported over UniFFI; that is P005.",
+      "descriptionUpdatedAt": "2026-09-10T14:59:24.647Z",
       "notes": "",
       "statusLog": [
         {
@@ -150,6 +150,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-002-in-progress-done",
+          "date": "2026-09-10T14:59:24.645Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "SHIPPED. Commit fc71c3f.\n\ncore/src/rule.rs: new Prefixes type, Matcher::StartsWith widened to hold it, Origin on Rule, LocationRef reshaped, PrefixSource::prefixes_for. core/src/dataset.rs: prefixes_named, names, and Builder::build now returns Result. core/src/geocode.rs: Places implements PrefixSource. core/src/evaluate.rs, expand.rs, explain.rs updated. core/tests/location.rs (new, 15 tests). Every existing test updated to the new shape and still passing.\n\nDECISION — a prefix SET, not several rules. The task named both candidates. One rule staying one rule wins because three separate things depend on it: R2 points the user at \"the rule that did not fit\", explain reports per rule, and a conflict names two rule ids. Splitting a place into several rules would make all three describe something the user never wrote, and the UI would have to re-group them to undo it. The cost — specificity, overlap and expansion all handling a set — is paid once here. A single prefix is a set of one, so there is no second code path anywhere.\n\nDECISION — specificity is the SHORTEST run. A city's area codes differ in length; the rule matches under any of them, so the broadest is what it really is. Ranking by the longest would claim precision the rule does not have and let it beat a genuinely narrower rule. Tested: a three-code place ranks equal to its shortest code and below its longest.\n\nDECISION — contained runs are dropped when the set is built. Every number under 390111234 is already under 39011123, so keeping both changes nothing about what matches — but the ranges overlap, and overlapping ranges emit the same number twice during expansion, which iOS rejects the whole request for. Minimising leaves the runs pairwise disjoint, which is also what makes expansion ordering sound: templates sorted by total length then digits come out ascending across the whole set, because a shorter number is always smaller and at equal length lexicographic order is numeric order. FOUND BY A FAILING TEST, not by reasoning — the first version sorted correctly and still produced duplicates.\n\nDECISION — LocationRef holds the name as the data spells it plus the language that spelling came from. Resolution tries that language first, then the others, so a rule written in one language keeps working after the app switches to another. The core never invents a name; the UI offers places the data contains.\n\nDECISION — Rule carries Origin. Once resolved, a location is indistinguishable from a typed prefix, but only one of them carries a caveat: mobile numbering is not geographic anywhere, so a location rule can only ever match landlines. explain reports Caveat::LandlinesOnly beside the verdicts rather than inside one, because it holds even on surfaces that evaluate live.\n\nSECOND BUG FOUND AND FIXED. Builder::build silently dropped any prefix that would not fit its u32 — more than nine digits. The vendored data tops out at nine so it never fired, but a dropped prefix is a lookup that quietly returns nothing, and no caller could tell that from a place with no data. It now returns DatasetError::PrefixTooLong. Surfaced only because a test fixture used a longer prefix.\n\nVERIFIED. cargo test --all: 148 pass, 2 ignored, 0 fail — up from 133, with every pre-existing test unchanged in intent. fmt, clippy --all-targets -D warnings, §1 lint and the vendored-data check all clean. UniFFI bindings still generate. The real-data check still passes. Covered: a place with one code, with three, with 1,200; a place that resolves to nothing; contained runs collapsing; a country with no data; the same city under two languages; an exact allow still beating a location deny; expansion reaching every run and staying ascending.\n\nA REAL PRODUCT FACT the tests now record: a whole city does not fit on a phone. Turin's area codes leave six to nine digits free, over a billion numbers, so the rule works live on Android and is TooBroad for iOS calls. That is reported, not silently dropped.\n\nPERFORMANCE NOTE. The location suite first took 35 seconds, because an Italian prefix expands across seven possible lengths. Rewritten against a country with a single possible length, it runs in 1.7 seconds with the same coverage. Worth knowing when writing expansion tests: pick the country for its length count, not its familiarity.\n\nUNVERIFIED. Never run on a device or through Swift or Kotlin. Places::prefixes_for scans a whole dataset per call — fine when a rule is written, and it is never on the call path, but it has not been measured against the 269,380-entry English set. Nothing is exported over UniFFI; that is P005."
         }
       ],
       "decisions": [],
@@ -159,61 +167,61 @@
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-001-prefixsource-replaced-with-something-returning-every-matching-prefix",
           "number": 1,
           "title": "PrefixSource replaced with something returning every matching prefix",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-002-multi-prefix-representation-chosen-with-the-reason-recorded",
           "number": 2,
           "title": "Multi-prefix representation chosen, with the reason recorded",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-003-specificity-for-a-multi-prefix-location-defined-deliberately-not-incidentally",
           "number": 3,
           "title": "Specificity for a multi-prefix location defined deliberately, not incidentally",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-004-expansion-covers-every-prefix-still-ascending-and-duplicate-free",
           "number": 4,
           "title": "Expansion covers every prefix, still ascending and duplicate-free",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-005-locationref-contents-decided-and-kept-opaque-to-the-core",
           "number": 5,
           "title": "LocationRef contents decided and kept opaque to the core",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-006-explain-reports-that-location-rules-cannot-match-mobiles",
           "number": 6,
           "title": "explain() reports that location rules cannot match mobiles",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-007-evaluator-matching-path-stays-allocation-free",
           "number": 7,
           "title": "Evaluator matching path stays allocation-free",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-008-edge-cases-one-three-1000-none-overlapping-uncovered-country-two-languages",
           "number": 8,
           "title": "Edge cases: one, three, 1000+, none, overlapping, uncovered country, two languages",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-009-all-p002-and-p003-tests-still-pass",
           "number": 9,
           "title": "All P002 and P003 tests still pass",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-010-cargo-test-fmt-clippy-d-warnings-both-lints",
           "number": 10,
           "title": "cargo test, fmt, clippy -D warnings, both lints",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -221,9 +229,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-10T14:46:32.541Z",
-      "completedAt": "",
+      "completedAt": "2026-09-10T14:59:24.645Z",
       "createdAt": "2026-09-10T14:40:36.275Z",
-      "updatedAt": "2026-09-10T14:46:32.541Z",
+      "updatedAt": "2026-09-10T14:59:24.645Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
@@ -233,7 +241,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:16.417Z",
-  "updatedAt": "2026-09-10T14:46:32.541Z",
+  "updatedAt": "2026-09-10T14:59:24.645Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -246,6 +254,14 @@
       "fromStatus": "draft",
       "toStatus": "in-progress",
       "title": "draft → in-progress",
+      "description": ""
+    },
+    {
+      "id": "73b3bb98-f334-4d35-976f-1533db657be7",
+      "date": "2026-09-10T14:59:24.654Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
       "description": ""
     }
   ],
