@@ -22,15 +22,215 @@
   "decisions": [],
   "acceptedDecisions": [],
   "completionCriteria": [],
-  "taskIds": [],
-  "tasks": [],
+  "taskIds": [
+    "55948bb6-6597-422c-9612-9a3f612218af",
+    "ad26ebc1-4d20-4345-bfdc-23a8f098110a"
+  ],
+  "tasks": [
+    {
+      "id": "55948bb6-6597-422c-9612-9a3f612218af",
+      "phaseId": "f2041384-6ad9-4ed6-a3af-32671e549bd5",
+      "number": 16,
+      "shortId": "9YWDE",
+      "priority": 1,
+      "shortName": "geocode-a-number-to-a-place-wi",
+      "title": "Geocode a number to a place, with language fallback",
+      "status": "in-progress",
+      "description": "DEPENDS ON P006(F003)/T015, which packs the place data. core/src/dataset.rs already provides Dataset::lookup(digits) doing longest-prefix match, so the lookup itself exists; this is the layer above it.\n\nCURRENT STATE. Nothing in the core geocodes. The packed datasets build to datasets/build/places.<lang>.cfds and nothing loads them.\n\nGOAL. geocode(number, languages, datasets) -> Located, in core/src/geocode.rs (new). Serves R7's place-name half and the display side of R2.\n\nTHE ANSWER IS NOT A STRING. There are at least three outcomes and they are different things to say:\n- a place name, plus which language it came from, because that is not always the one asked for;\n- NOT GEOGRAPHIC — the number is a mobile, and mobile numbering is not tied to a place anywhere in the world. VERIFIED 2026-09-10: Italy has 0 geocoding entries for 393 (mobile) and 121 for 390 (landline). Returning \"nothing found\" here would be a lie; the UI must be able to say why;\n- no data — the country or prefix simply is not covered.\nCollapsing these into Option<String> loses exactly the honesty R2 and R8 ask for.\n\nLANGUAGE FALLBACK (R7), in order: the user's language, then English, then the bare prefix with no name. Never a blank, never an untranslated key. This is the NORMAL path, not an edge case — measured coverage: English 151 countries; Italian 2; German 5; Chinese 2. An Italian user gets Italian names for Italy and Switzerland and English everywhere else.\n\nACCURACY IS APPROXIMATE, and the type should not pretend otherwise. Number portability means a landline can keep its number after moving. The data is a good guide, not a fact about where a caller is.\n\nWHAT TO BUILD:\n1. A Located result covering the cases above, carrying the language actually used.\n2. A holder for several loaded datasets, ordered by preference, that tries each in turn.\n3. Loading datasets from bytes. The core must not read files — the shells own IO — so take bytes or an already-parsed Dataset.\n4. Deciding \"not geographic\" from the number's type via the phonenumber metadata, not by guessing from an empty lookup: a missing entry and a mobile are different answers.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code.\n- Guidelines §5 / R7: no user-facing English in the core. Return facts and let the shell word them.\n- Runs app-side, not in the iOS extension — see the note in core/src/dataset.rs.\n\nEDGE CASES to test: a landline in a covered country; a mobile in the same country; a country with no data in any loaded language; a language that covers the country and one that does not, proving fallback; an empty dataset list; a number shorter than any prefix; the same number in two languages giving two names.\n\nDONE WHEN. Every case above is distinguishable in the result, fallback is proven by test rather than asserted, and cargo test / fmt / clippy -D warnings / both lints pass. Fixtures in core/tests/.",
+      "descriptionUpdatedAt": "2026-09-10T14:40:12.735Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-001-planned-in-progress",
+          "date": "2026-09-10T14:40:41.866Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-001-geocode-number-languages-datasets-located-in-core-src-geocode-rs",
+          "number": 1,
+          "title": "geocode(number, languages, datasets) -> Located in core/src/geocode.rs",
+          "checked": false
+        },
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-002-result-distinguishes-place-not-geographic-no-data",
+          "number": 2,
+          "title": "Result distinguishes place / not-geographic / no-data",
+          "checked": false
+        },
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-003-result-carries-which-language-actually-supplied-the-name",
+          "number": 3,
+          "title": "Result carries which language actually supplied the name",
+          "checked": false
+        },
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-004-fallback-order-user-language-english-bare-prefix-proven-by-test",
+          "number": 4,
+          "title": "Fallback order user language, English, bare prefix, proven by test",
+          "checked": false
+        },
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-005-not-geographic-decided-from-number-type-not-from-an-empty-lookup",
+          "number": 5,
+          "title": "Not-geographic decided from number type, not from an empty lookup",
+          "checked": false
+        },
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-006-core-takes-bytes-or-a-parsed-dataset-never-reads-files",
+          "number": 6,
+          "title": "Core takes bytes or a parsed Dataset, never reads files",
+          "checked": false
+        },
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-007-no-user-facing-english-in-the-core",
+          "number": 7,
+          "title": "No user-facing English in the core",
+          "checked": false
+        },
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-008-tests-for-every-edge-case-in-the-description",
+          "number": 8,
+          "title": "Tests for every edge case in the description",
+          "checked": false
+        },
+        {
+          "id": "55948bb6-6597-422c-9612-9a3f612218af-check-009-cargo-test-fmt-clippy-d-warnings-both-lints",
+          "number": 9,
+          "title": "cargo test, fmt, clippy -D warnings, both lints",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-10T14:40:41.866Z",
+      "completedAt": "",
+      "createdAt": "2026-09-10T14:40:12.725Z",
+      "updatedAt": "2026-09-10T14:40:41.866Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-10T14:40:41.838Z"
+        }
+      ]
+    },
+    {
+      "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a",
+      "phaseId": "f2041384-6ad9-4ed6-a3af-32671e549bd5",
+      "number": 17,
+      "shortId": "JT2N2",
+      "priority": 2,
+      "shortName": "resolve-a-place-to-its-prefixe",
+      "title": "Resolve a place to its prefixes, fixing the one-prefix assumption",
+      "status": "planned",
+      "description": "DEPENDS ON P004(F002)/T016 for the dataset holder.\n\nA BUG IN THE RULE MODEL, found while reading the real data on 2026-09-10. P002(F002)/T004 defined:\n\n    pub trait PrefixSource {\n        fn prefix_for(&self, location: &LocationRef) -> Option<Digits>;\n    }\n\nand Authored::Location resolves through it to exactly one Matcher::StartsWith. THE DATA DOES NOT WORK THAT WAY. A city routinely has several area codes:\n- \"Turin\" appears 3 times in the Italian data (39011, 390122, 390125).\n- \"Guangzhou, Guangdong\" appears 1,565 times in the Chinese data.\n\nSo \"block Turin\" cannot be represented today. The current model would silently pick one prefix and block a third of the city, which is precisely the silent narrowing R2 forbids. Nothing fails: the rule looks fine, and calls from the other two area codes get through.\n\nGOAL. Make a location resolve to the SET of prefixes that name it, and carry that through the model, the evaluator and expansion without any of them special-casing location.\n\nWHAT TO BUILD:\n1. Replace prefix_for with something returning all matching prefixes. Keep it a trait so the geocoder is injected rather than reached for.\n2. Decide how a multi-prefix location is represented. Two candidates, and this is the real design decision of the task:\n   - resolve one authored rule into several rules, one per prefix — simple, but rule ids stop being one-to-one with what the user wrote, and the UI has to re-group them to show one rule;\n   - give Matcher a variant matching any of a set of prefixes — one rule stays one rule, but specificity, overlap and expansion all need to handle it.\n   Whichever is chosen, write down why in the completion, because both have a cost that shows up later.\n3. Specificity for a multi-prefix match. Prefixes for one city are usually different lengths (39011 is 5, 390122 is 6). The safe reading is the SHORTEST, since that is the broadest thing the rule matches — but say so explicitly rather than leaving it to fall out.\n4. Expansion must cover every prefix, and the result must still be ascending and free of duplicates. Two area codes of a city can overlap in the block list.\n5. Matching a place name is not exact-string business: names carry a region suffix (\"Guangzhou, Guangdong\"), and the UI will offer a picked place rather than typed text. Decide what a LocationRef actually holds and keep it opaque to the core.\n\nALSO REQUIRED BY R2. Location rules match landlines only, because mobile numbering is not geographic anywhere. Verified: Italy has 0 geocoding entries for 393 and 121 for 390. A location rule therefore cannot block a mobile, and explain() should say so on every surface.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code.\n- Guidelines §3: this is filtering logic, so it lives in the core.\n- The evaluator's matching path must stay allocation-free.\n\nEDGE CASES to test: a place with one prefix; a place with three; a place with over a thousand; a place that resolves to nothing, which is legal because metadata changes; two places whose prefixes overlap; a location rule against a country with no geocoding data at all; the same place name in two languages.\n\nDONE WHEN. A location rule with several prefixes blocks all of them, is one rule to the user, expansion stays ascending and duplicate-free, explain() reports the landline-only limit, every P002 and P003 test still passes, and cargo test / fmt / clippy -D warnings / both lints pass.",
+      "descriptionUpdatedAt": "2026-09-10T14:40:36.288Z",
+      "notes": "",
+      "statusLog": [],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-001-prefixsource-replaced-with-something-returning-every-matching-prefix",
+          "number": 1,
+          "title": "PrefixSource replaced with something returning every matching prefix",
+          "checked": false
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-002-multi-prefix-representation-chosen-with-the-reason-recorded",
+          "number": 2,
+          "title": "Multi-prefix representation chosen, with the reason recorded",
+          "checked": false
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-003-specificity-for-a-multi-prefix-location-defined-deliberately-not-incidentally",
+          "number": 3,
+          "title": "Specificity for a multi-prefix location defined deliberately, not incidentally",
+          "checked": false
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-004-expansion-covers-every-prefix-still-ascending-and-duplicate-free",
+          "number": 4,
+          "title": "Expansion covers every prefix, still ascending and duplicate-free",
+          "checked": false
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-005-locationref-contents-decided-and-kept-opaque-to-the-core",
+          "number": 5,
+          "title": "LocationRef contents decided and kept opaque to the core",
+          "checked": false
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-006-explain-reports-that-location-rules-cannot-match-mobiles",
+          "number": 6,
+          "title": "explain() reports that location rules cannot match mobiles",
+          "checked": false
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-007-evaluator-matching-path-stays-allocation-free",
+          "number": 7,
+          "title": "Evaluator matching path stays allocation-free",
+          "checked": false
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-008-edge-cases-one-three-1000-none-overlapping-uncovered-country-two-languages",
+          "number": 8,
+          "title": "Edge cases: one, three, 1000+, none, overlapping, uncovered country, two languages",
+          "checked": false
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-009-all-p002-and-p003-tests-still-pass",
+          "number": 9,
+          "title": "All P002 and P003 tests still pass",
+          "checked": false
+        },
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-010-cargo-test-fmt-clippy-d-warnings-both-lints",
+          "number": 10,
+          "title": "cargo test, fmt, clippy -D warnings, both lints",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "",
+      "completedAt": "",
+      "createdAt": "2026-09-10T14:40:36.275Z",
+      "updatedAt": "2026-09-10T14:40:36.275Z",
+      "sessionInfo": []
+    }
+  ],
   "createdAt": "2026-09-08T08:30:16.417Z",
-  "updatedAt": "2026-09-08T08:30:16.417Z",
+  "updatedAt": "2026-09-10T14:40:41.866Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
   "handoffReadAt": "",
   "handoffHistory": [],
-  "statusLog": [],
-  "sessionInfo": []
+  "statusLog": [
+    {
+      "id": "6042558a-63d2-48a2-ba13-4b2c5ab4d4de",
+      "date": "2026-09-10T14:40:41.873Z",
+      "fromStatus": "draft",
+      "toStatus": "in-progress",
+      "title": "draft → in-progress",
+      "description": ""
+    }
+  ],
+  "sessionInfo": [
+    {
+      "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+      "createdAt": "2026-09-10T14:40:41.838Z"
+    }
+  ]
 }

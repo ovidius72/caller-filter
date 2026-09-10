@@ -233,7 +233,7 @@ fn to_int(country_code: u16, national: &str) -> Option<i64> {
 /// territory defines is not, which is why each is an Option. Short codes and
 /// emergency numbers are left out deliberately — they are not dialable E.164
 /// numbers and cannot appear as a caller.
-fn descriptors_of(meta: &Metadata) -> Vec<&Descriptor> {
+pub(crate) fn descriptors_of(meta: &Metadata) -> Vec<&Descriptor> {
     let d = meta.descriptors();
     [
         d.fixed_line(),

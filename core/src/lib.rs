@@ -22,6 +22,7 @@ pub mod dataset;
 pub mod evaluate;
 pub mod expand;
 pub mod explain;
+pub mod geocode;
 pub mod normalize;
 pub mod rule;
 
@@ -32,6 +33,7 @@ pub use expand::{
     NotExpandable,
 };
 pub use explain::{explain, Explanation, Surface, Verdict as PlatformVerdict};
+pub use geocode::{geocode, is_geographic, Located, Places};
 pub use normalize::{normalize, NormalizeError, Normalized};
 pub use rule::{
     Authored, Conflict, Digits, Effect, LocationRef, Matcher, Pattern, PrefixSource, Rule,
