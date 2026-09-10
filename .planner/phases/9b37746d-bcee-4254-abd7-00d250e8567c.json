@@ -427,49 +427,49 @@
           "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-001-k-way-merge-over-the-per-rule-ascending-iterators",
           "number": 1,
           "title": "k-way merge over the per-rule ascending iterators",
-          "checked": false
+          "checked": true
         },
         {
           "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-002-no-vec-of-the-full-expansion-on-the-streaming-path",
           "number": 2,
           "title": "No Vec of the full expansion on the streaming path",
-          "checked": false
+          "checked": true
         },
         {
           "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-003-ascending-and-deduplicated-asserted-not-sorted",
           "number": 3,
           "title": "Ascending and deduplicated, asserted not sorted",
-          "checked": false
+          "checked": true
         },
         {
           "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-004-every-candidate-still-goes-through-evaluate",
           "number": 4,
           "title": "Every candidate still goes through evaluate()",
-          "checked": false
+          "checked": true
         },
         {
           "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-005-counting-global-allocator-test-proving-peak-memory-is-bounded",
           "number": 5,
           "title": "Counting global allocator test proving peak memory is bounded",
-          "checked": false
+          "checked": true
         },
         {
           "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-006-edge-cases-none-one-overlapping-empty-allow-mid-run-uneven-lengths",
           "number": 6,
           "title": "Edge cases: none, one, overlapping, empty, allow mid-run, uneven lengths",
-          "checked": false
+          "checked": true
         },
         {
           "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-007-all-t010-expansion-tests-still-pass-unchanged",
           "number": 7,
           "title": "All T010 expansion tests still pass unchanged",
-          "checked": false
+          "checked": true
         },
         {
           "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-008-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
           "number": 8,
           "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -479,7 +479,7 @@
       "startedAt": "2026-09-10T07:42:03.906Z",
       "completedAt": "",
       "createdAt": "2026-09-10T07:41:59.215Z",
-      "updatedAt": "2026-09-10T07:42:03.906Z",
+      "updatedAt": "2026-09-10T07:51:29.458Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
@@ -489,7 +489,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:03.596Z",
-  "updatedAt": "2026-09-10T07:42:03.906Z",
+  "updatedAt": "2026-09-10T07:51:29.458Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,

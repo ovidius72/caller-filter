@@ -281,3 +281,68 @@ fn the_list_ios_gets_agrees_with_what_android_decides_live() {
         );
     }
 }
+
+#[test]
+fn a_deny_that_expands_to_nothing_does_not_disturb_the_others() {
+    // The first rule names an area code no Italian number uses, so the pattern
+    // rejects everything under it. The merge must skip that stream entirely
+    // rather than stalling on it or dropping the rule beside it.
+    let rules = RuleSet::new(vec![
+        Rule::new(
+            RuleId(1),
+            Effect::Deny,
+            Matcher::Pattern(Pattern::parse("39111234567x").expect("pattern")),
+        ),
+        Rule::new(
+            RuleId(2),
+            Effect::Deny,
+            Matcher::Pattern(Pattern::parse("39021234567x").expect("pattern")),
+        ),
+    ]);
+
+    let out = expand_rules_to_vec(&rules, &DATABASE, budget(10_000));
+    let alone = RuleSet::new(vec![Rule::new(
+        RuleId(2),
+        Effect::Deny,
+        Matcher::Pattern(Pattern::parse("39021234567x").expect("pattern")),
+    )]);
+
+    assert!(!out.is_empty());
+    assert_eq!(out, expand_rules_to_vec(&alone, &DATABASE, budget(10_000)));
+}
+
+#[test]
+fn streams_of_very_different_lengths_merge_correctly() {
+    // One rule covers ten numbers, the other ten thousand. The short stream is
+    // exhausted long before the long one, and the merge has to keep going
+    // without repeating or reordering anything.
+    let rules = RuleSet::new(vec![
+        Rule::new(
+            RuleId(1),
+            Effect::Deny,
+            Matcher::Pattern(Pattern::parse("39021234567x").expect("pattern")),
+        ),
+        Rule::new(
+            RuleId(2),
+            Effect::Deny,
+            Matcher::Pattern(Pattern::parse("390212345xxx").expect("pattern")),
+        ),
+    ]);
+
+    let out = expand_rules_to_vec(&rules, &DATABASE, budget(100_000));
+
+    // The narrow rule's ten numbers all sit inside the wide rule's thousand, so
+    // the union is exactly a thousand. That is also the dedup proof: ten of them
+    // came out of both streams.
+    assert_eq!(out.len(), 1000);
+    assert!(out.windows(2).all(|w| w[0] < w[1]), "ascending, no repeats");
+    // Every number the narrow rule covers must still be present exactly once.
+    for last in 0..10i64 {
+        let n = 390_212_345_670 + last;
+        assert_eq!(
+            out.iter().filter(|v| **v == n).count(),
+            1,
+            "{n} should appear exactly once"
+        );
+    }
+}
