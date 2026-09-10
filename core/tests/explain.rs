@@ -9,7 +9,7 @@
 
 use callerfilter_core::{
     explain, Budget, Digits, Effect, EntryLimit, Matcher, NotExpandable, Pattern,
-    PlatformVerdict as Verdict, Rule, RuleId, RuleSet, Surface,
+    PlatformVerdict as Verdict, Prefixes, Rule, RuleId, RuleSet, Surface,
 };
 use phonenumber::metadata::DATABASE;
 
@@ -55,6 +55,11 @@ fn digits(s: &str) -> Digits {
     Digits::parse(s).expect("digits")
 }
 
+/// One prefix, as the set of one that a prefix rule now holds.
+fn prefix(s: &str) -> Prefixes {
+    Prefixes::one(digits(s))
+}
+
 fn deny(id: u64, m: Matcher) -> Rule {
     Rule::new(RuleId(id), Effect::Deny, m)
 }
@@ -75,7 +80,7 @@ fn a_narrow_rule_runs_live_on_one_platform_and_is_listed_on_another() {
 fn a_rule_too_wide_for_the_phone_still_runs_live_elsewhere() {
     // This is the asymmetry the user has to be told about: the same rule works
     // on one phone and not the other, and the figure shown is real.
-    let rule = deny(1, Matcher::StartsWith(digits("3902")));
+    let rule = deny(1, Matcher::StartsWith(prefix("3902")));
     let rules = RuleSet::new(vec![rule.clone()]);
 
     let e = explain(&rule, &rules, &DATABASE, &all(1_000));
@@ -144,7 +149,7 @@ fn an_allow_inside_a_deny_does_something_everywhere() {
         Matcher::Exact(digits("390212345678")),
     );
     let rules = RuleSet::new(vec![
-        deny(1, Matcher::StartsWith(digits("39021234567"))),
+        deny(1, Matcher::StartsWith(prefix("39021234567"))),
         allow.clone(),
     ]);
 
@@ -173,7 +178,7 @@ fn a_rule_for_numbers_that_do_not_exist_reports_no_effect_where_it_is_listed() {
 
 #[test]
 fn digits_belonging_to_no_country_cannot_be_listed() {
-    let rule = deny(1, Matcher::StartsWith(digits("9999999")));
+    let rule = deny(1, Matcher::StartsWith(prefix("9999999")));
     let rules = RuleSet::new(vec![rule.clone()]);
 
     let e = explain(&rule, &rules, &DATABASE, &all(10_000));

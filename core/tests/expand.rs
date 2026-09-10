@@ -5,12 +5,17 @@
 
 use callerfilter_core::{
     expand_matcher, expand_rules_to_vec, Budget, Digits, Effect, EntryLimit, Expansion, Matcher,
-    Pattern, Rule, RuleId, RuleSet,
+    Pattern, Prefixes, Rule, RuleId, RuleSet,
 };
 use phonenumber::metadata::DATABASE;
 
 fn digits(s: &str) -> Digits {
     Digits::parse(s).expect("valid digits")
+}
+
+/// One prefix, as the set of one that a prefix rule now holds.
+fn prefix(s: &str) -> Prefixes {
+    Prefixes::one(digits(s))
 }
 
 fn budget(entries: u64) -> Budget {
@@ -60,7 +65,7 @@ fn a_suffix_rule_is_refused_rather_than_attempted() {
 #[test]
 fn digits_belonging_to_no_country_code_cannot_expand() {
     assert_eq!(
-        verdict(&Matcher::StartsWith(digits("9999999")), budget(1000)),
+        verdict(&Matcher::StartsWith(prefix("9999999")), budget(1000)),
         "not_expandable(UnknownCountry)"
     );
 }
@@ -109,7 +114,7 @@ fn numbers_come_out_strictly_ascending_with_no_duplicates() {
 fn a_prefix_walks_shorter_numbers_before_longer_ones() {
     // Every number here shares a prefix, so a longer one is always the larger.
     // Walking lengths in order is therefore already numerically ascending.
-    let out = collect(&Matcher::StartsWith(digits("39021234567")), budget(200_000));
+    let out = collect(&Matcher::StartsWith(prefix("39021234567")), budget(200_000));
 
     assert!(out.windows(2).all(|w| w[0] < w[1]));
     let shortest = out.first().copied().unwrap().to_string().len();
@@ -125,7 +130,7 @@ fn a_prefix_wider_than_the_budget_is_reported_with_a_real_figure() {
     // far more numbers than any phone will hold. The figure shown is the
     // arithmetic ceiling from the possible lengths, which is the true count
     // wherever the pattern leaves the tail alone — as it does here.
-    let v = verdict(&Matcher::StartsWith(digits("3902")), budget(1_000));
+    let v = verdict(&Matcher::StartsWith(prefix("3902")), budget(1_000));
     assert!(v.starts_with("too_broad("), "got {v}");
 }
 
@@ -133,7 +138,7 @@ fn a_prefix_wider_than_the_budget_is_reported_with_a_real_figure() {
 fn the_measured_ios_limit_is_injected_not_assumed() {
     // The budget comes from what was measured on a device, never a constant in
     // this crate. Same rule, two budgets, two answers.
-    let matcher = Matcher::StartsWith(digits("39021234567"));
+    let matcher = Matcher::StartsWith(prefix("39021234567"));
 
     let generous = Budget::from_entry_limit(EntryLimit::default(), 10);
     let mean = Budget::from_entry_limit(EntryLimit(10), 10);
@@ -155,7 +160,7 @@ fn counting_stops_early_instead_of_counting_to_eleven_trillion() {
     // honest count really is astronomical, and it has to be arrived at by
     // arithmetic rather than by enumeration. If this test hangs, that broke.
     let started = std::time::Instant::now();
-    let v = verdict(&Matcher::StartsWith(digits("4930")), budget(1_800_000));
+    let v = verdict(&Matcher::StartsWith(prefix("4930")), budget(1_800_000));
     let elapsed = started.elapsed();
 
     assert!(v.starts_with("too_broad("), "got {v}");
@@ -172,8 +177,8 @@ fn the_validating_pattern_rejects_numbers_that_do_not_exist() {
     // This is what applying the pattern buys: not a smaller count, but a list
     // with nothing fictional in it. Compare a viable area code against one that
     // no Italian number uses.
-    let real = collect(&Matcher::StartsWith(digits("39021234567")), budget(200_000));
-    let fake = collect(&Matcher::StartsWith(digits("39111234567")), budget(200_000));
+    let real = collect(&Matcher::StartsWith(prefix("39021234567")), budget(200_000));
+    let fake = collect(&Matcher::StartsWith(prefix("39111234567")), budget(200_000));
 
     assert!(!real.is_empty());
     assert!(

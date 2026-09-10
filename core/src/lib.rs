@@ -32,12 +32,12 @@ pub use expand::{
     expand_matcher, expand_rules, expand_rules_to_vec, upper_bound, BlockList, Budget, Expansion,
     NotExpandable,
 };
-pub use explain::{explain, Explanation, Surface, Verdict as PlatformVerdict};
+pub use explain::{explain, Caveat, Explanation, Surface, Verdict as PlatformVerdict};
 pub use geocode::{geocode, is_geographic, Located, Places};
 pub use normalize::{normalize, NormalizeError, Normalized};
 pub use rule::{
-    Authored, Conflict, Digits, Effect, LocationRef, Matcher, Pattern, PrefixSource, Rule,
-    RuleError, RuleId, RuleSet, Specificity,
+    Authored, Conflict, Digits, Effect, LocationRef, Matcher, Origin, Pattern, PrefixSource,
+    Prefixes, Rule, RuleError, RuleId, RuleSet, Specificity,
 };
 
 /// How the engine was asked to treat a call or message.

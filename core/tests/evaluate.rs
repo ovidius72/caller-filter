@@ -10,11 +10,17 @@
 use std::time::Instant;
 
 use callerfilter_core::{
-    evaluate, Call, Decision, Digits, Effect, Matcher, Pattern, Rule, RuleId, RuleSet, E164,
+    evaluate, Call, Decision, Digits, Effect, Matcher, Pattern, Prefixes, Rule, RuleId, RuleSet,
+    E164,
 };
 
 fn digits(s: &str) -> Digits {
     Digits::parse(s).expect("valid digits")
+}
+
+/// One prefix, as the set of one that a prefix rule now holds.
+fn prefix(s: &str) -> Prefixes {
+    Prefixes::one(digits(s))
 }
 
 fn pattern(s: &str) -> Pattern {
@@ -37,7 +43,7 @@ fn a_call_nothing_matches_is_allowed() {
     let rules = RuleSet::new(vec![rule(
         1,
         Effect::Deny,
-        Matcher::StartsWith(digits("0987")),
+        Matcher::StartsWith(prefix("0987")),
     )]);
 
     assert_eq!(decide("0512345678", &rules), Decision::Allow);
@@ -55,7 +61,7 @@ fn a_deny_on_a_range_blocks_a_number_inside_it() {
     let rules = RuleSet::new(vec![rule(
         1,
         Effect::Deny,
-        Matcher::StartsWith(digits("0987777")),
+        Matcher::StartsWith(prefix("0987777")),
     )]);
 
     assert_eq!(decide("0987777212", &rules), Decision::Block);
@@ -65,7 +71,7 @@ fn a_deny_on_a_range_blocks_a_number_inside_it() {
 fn an_allow_on_an_exact_number_beats_a_deny_on_its_range() {
     // R2's headline case. Neither rule is ordered by hand; the longer wins.
     let rules = RuleSet::new(vec![
-        rule(1, Effect::Deny, Matcher::StartsWith(digits("0987777"))),
+        rule(1, Effect::Deny, Matcher::StartsWith(prefix("0987777"))),
         rule(2, Effect::Allow, Matcher::Exact(digits("0987777212"))),
     ]);
 
@@ -80,12 +86,12 @@ fn an_allow_on_an_exact_number_beats_a_deny_on_its_range() {
 #[test]
 fn authoring_order_does_not_change_the_answer() {
     let forwards = RuleSet::new(vec![
-        rule(1, Effect::Deny, Matcher::StartsWith(digits("0987777"))),
+        rule(1, Effect::Deny, Matcher::StartsWith(prefix("0987777"))),
         rule(2, Effect::Allow, Matcher::Exact(digits("0987777212"))),
     ]);
     let backwards = RuleSet::new(vec![
         rule(1, Effect::Allow, Matcher::Exact(digits("0987777212"))),
-        rule(2, Effect::Deny, Matcher::StartsWith(digits("0987777"))),
+        rule(2, Effect::Deny, Matcher::StartsWith(prefix("0987777"))),
     ]);
 
     assert_eq!(decide("0987777212", &forwards), Decision::Allow);
@@ -96,8 +102,8 @@ fn authoring_order_does_not_change_the_answer() {
 fn three_levels_of_nesting_resolve_to_the_narrowest() {
     // Deny a wide range, allow a narrower one inside it, deny one number back.
     let rules = RuleSet::new(vec![
-        rule(1, Effect::Deny, Matcher::StartsWith(digits("0987"))),
-        rule(2, Effect::Allow, Matcher::StartsWith(digits("0987777"))),
+        rule(1, Effect::Deny, Matcher::StartsWith(prefix("0987"))),
+        rule(2, Effect::Allow, Matcher::StartsWith(prefix("0987777"))),
         rule(3, Effect::Deny, Matcher::Exact(digits("0987777212"))),
     ]);
 
@@ -191,7 +197,7 @@ fn a_caller_id_rule_matches_the_name_and_ignores_case() {
 fn a_number_rule_outranks_a_caller_id_rule_because_it_pins_digits() {
     let rules = RuleSet::new(vec![
         rule(1, Effect::Deny, Matcher::CallerId("Acme Ltd".into())),
-        rule(2, Effect::Allow, Matcher::StartsWith(digits("05"))),
+        rule(2, Effect::Allow, Matcher::StartsWith(prefix("05"))),
     ]);
     let number = E164::new("0512345678").unwrap();
 
@@ -243,7 +249,7 @@ fn a_tie_between_agreeing_rules_is_not_contested() {
 #[test]
 fn a_prefix_and_a_suffix_of_equal_width_tie_when_both_match() {
     let rules = RuleSet::new(vec![
-        rule(1, Effect::Deny, Matcher::StartsWith(digits("0987"))),
+        rule(1, Effect::Deny, Matcher::StartsWith(prefix("0987"))),
         rule(2, Effect::Allow, Matcher::EndsWith(digits("7212"))),
     ]);
     let number = E164::new("0987777212").unwrap();
@@ -265,7 +271,7 @@ fn the_verdict_names_the_rule_that_decided() {
     // R2 requires a rule never silently start or stop applying, so the caller
     // has to be able to say which one acted.
     let rules = RuleSet::new(vec![
-        rule(7, Effect::Deny, Matcher::StartsWith(digits("0987777"))),
+        rule(7, Effect::Deny, Matcher::StartsWith(prefix("0987777"))),
         rule(9, Effect::Allow, Matcher::Exact(digits("0987777212"))),
     ]);
     let number = E164::new("0987777212").unwrap();

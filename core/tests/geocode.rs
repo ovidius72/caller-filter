@@ -23,7 +23,7 @@ fn dataset(language: &str, entries: &[(&str, &str)]) -> Dataset {
     for (prefix, name) in entries {
         b.add(prefix, name);
     }
-    Dataset::parse(&b.build(Kind::Places, language, "9.0.33")).expect("valid")
+    Dataset::parse(&b.build(Kind::Places, language, "9.0.33").expect("builds")).expect("valid")
 }
 
 /// Italian names, covering Italy only — which is exactly its real coverage.

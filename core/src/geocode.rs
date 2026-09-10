@@ -22,6 +22,7 @@ use phonenumber::PhoneNumber;
 
 use crate::dataset::Dataset;
 use crate::expand::descriptors_of;
+use crate::rule::{Digits, LocationRef, PrefixSource};
 
 /// Where a number is from, or why that cannot be said.
 ///
@@ -81,6 +82,16 @@ impl Places {
     /// The languages loaded, in preference order.
     pub fn languages(&self) -> impl Iterator<Item = &str> {
         self.datasets.iter().map(|d| d.language())
+    }
+
+    /// Every place name offered, for the language given, so a picker can list
+    /// them. Empty when that language is not loaded.
+    pub fn names_in(&self, language: &str) -> Vec<&str> {
+        self.datasets
+            .iter()
+            .find(|d| d.language() == language)
+            .map(|d| d.names().collect())
+            .unwrap_or_default()
     }
 
     /// First dataset that knows this prefix, and what it calls it.
@@ -193,6 +204,39 @@ fn digits_of(number: &PhoneNumber) -> String {
     // `national()` renders through Display, which keeps a significant leading
     // zero. `value()` would drop it and key Italian numbers wrongly.
     format!("{}{}", number.country().code(), number.national())
+}
+
+impl PrefixSource for Places {
+    /// Every prefix that names this place.
+    ///
+    /// Looks in the language the rule was written in first, because that is the
+    /// spelling the user picked. If that language is no longer loaded — the app
+    /// changed language, or packaging changed — the name is tried against every
+    /// other loaded dataset, so a rule written in Italian keeps working for a
+    /// user who switched to English.
+    ///
+    /// An empty result is a real answer, not an error. Metadata changes, and a
+    /// place that resolved last month may not today; the caller has to say the
+    /// rule stopped matching rather than pretend it still does.
+    fn prefixes_for(&self, location: &LocationRef) -> Vec<Digits> {
+        let preferred = self
+            .datasets
+            .iter()
+            .filter(|d| d.language() == location.language);
+        let rest = self
+            .datasets
+            .iter()
+            .filter(|d| d.language() != location.language);
+
+        preferred
+            .chain(rest)
+            .map(|d| d.prefixes_named(&location.name))
+            .find(|found| !found.is_empty())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|p| Digits::parse(p).ok())
+            .collect()
+    }
 }
 
 #[cfg(test)]

@@ -8,8 +8,8 @@
 //! a country.
 
 use callerfilter_core::{
-    evaluate, normalize, Call, Decision, Digits, Effect, Matcher, NormalizeError, Rule, RuleId,
-    RuleSet,
+    evaluate, normalize, Call, Decision, Digits, Effect, Matcher, NormalizeError, Prefixes, Rule,
+    RuleId, RuleSet,
 };
 use phonenumber::metadata::DATABASE;
 
@@ -113,7 +113,7 @@ fn a_normalized_number_can_be_evaluated_without_allocating_again() {
         Rule::new(
             RuleId(1),
             Effect::Deny,
-            Matcher::StartsWith(Digits::parse("3902").expect("digits")),
+            Matcher::StartsWith(Prefixes::one(Digits::parse("3902").expect("digits"))),
         ),
         Rule::new(
             RuleId(2),

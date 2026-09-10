@@ -16,7 +16,7 @@
 //! makes over-the-air updates a requirement, so a number pasted into a file
 //! would rot exactly the way the one in R2 did.
 
-use callerfilter_core::{upper_bound, Digits, EntryLimit, Matcher, NotExpandable};
+use callerfilter_core::{upper_bound, Digits, EntryLimit, Matcher, NotExpandable, Prefixes};
 use phonenumber::metadata::{Database, Descriptor, Metadata, DATABASE};
 
 /// The bundled metadata, as a plain reference. Deref coercion from the lazy
@@ -62,7 +62,7 @@ fn shortest_fitting_prefix(country_code: u16, descriptor: &Descriptor) -> Findin
             return Finding::Unknown("prefix would not parse");
         };
 
-        match upper_bound(&Matcher::StartsWith(digits), db()) {
+        match upper_bound(&Matcher::StartsWith(Prefixes::one(digits)), db()) {
             Ok(entries) if entries <= budget() => {
                 return Finding::Pinned {
                     digits: pinned,
@@ -193,7 +193,7 @@ fn the_ceiling_is_never_below_what_is_actually_generated() {
         let Ok(digits) = Digits::parse(prefix) else {
             continue;
         };
-        let matcher = Matcher::StartsWith(digits);
+        let matcher = Matcher::StartsWith(Prefixes::one(digits));
 
         let Ok(ceiling) = upper_bound(&matcher, db()) else {
             continue;

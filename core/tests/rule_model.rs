@@ -10,11 +10,17 @@
 //! any of them belonging to a particular country.
 
 use callerfilter_core::{
-    Authored, Digits, Effect, LocationRef, Matcher, Pattern, PrefixSource, Rule, RuleId, RuleSet,
+    Authored, Digits, Effect, LocationRef, Matcher, Pattern, PrefixSource, Prefixes, Rule, RuleId,
+    RuleSet,
 };
 
 fn digits(s: &str) -> Digits {
     Digits::parse(s).expect("valid digits")
+}
+
+/// One prefix, as the set of one that a prefix rule now holds.
+fn prefix(s: &str) -> Prefixes {
+    Prefixes::one(digits(s))
 }
 
 fn pattern(s: &str) -> Pattern {
@@ -25,27 +31,29 @@ fn rule(id: u64, effect: Effect, matcher: Matcher) -> Rule {
     Rule::new(RuleId(id), effect, matcher)
 }
 
-/// A geocoder stub. The real one arrives in P004(F002).
-struct FixedPlace(Option<&'static str>);
+/// A geocoder stub. The real one is `Places` in P004(F002).
+struct FixedPlace(Vec<&'static str>);
 
 impl PrefixSource for FixedPlace {
-    fn prefix_for(&self, _location: &LocationRef) -> Option<Digits> {
-        self.0.map(digits)
+    fn prefixes_for(&self, _location: &LocationRef) -> Vec<Digits> {
+        self.0.iter().map(|p| digits(p)).collect()
     }
+}
+
+fn somewhere() -> LocationRef {
+    LocationRef::new("Somewhere", "en")
 }
 
 // ---------------------------------------------------------------- resolution
 
 #[test]
 fn a_prefix_and_a_location_both_become_leading_digits() {
-    let places = FixedPlace(Some("0212"));
+    let places = FixedPlace(vec!["0212"]);
 
     let from_prefix = Authored::Prefix(digits("0212")).resolve(&places).unwrap();
-    let from_place = Authored::Location(LocationRef("somewhere".into()))
-        .resolve(&places)
-        .unwrap();
+    let from_place = Authored::Location(somewhere()).resolve(&places).unwrap();
 
-    assert_eq!(from_prefix, Matcher::StartsWith(digits("0212")));
+    assert_eq!(from_prefix, Matcher::StartsWith(prefix("0212")));
     assert_eq!(
         from_prefix, from_place,
         "one implementation of leading-digit matching, three ways to author it"
@@ -56,7 +64,7 @@ fn a_prefix_and_a_location_both_become_leading_digits() {
 fn a_location_with_no_prefix_in_the_data_does_not_resolve() {
     // Metadata changes. A place that resolved last month may not today, and the
     // user has to be told the rule stopped matching rather than left guessing.
-    let resolved = Authored::Location(LocationRef("nowhere".into())).resolve(&FixedPlace(None));
+    let resolved = Authored::Location(somewhere()).resolve(&FixedPlace(vec![]));
     assert_eq!(resolved, None);
 }
 
@@ -66,16 +74,16 @@ fn a_location_with_no_prefix_in_the_data_does_not_resolve() {
 fn an_allow_on_an_exact_number_outranks_a_deny_on_its_range() {
     // The headline case from R2: no manual ordering, the longer rule wins.
     let allow = rule(1, Effect::Allow, Matcher::Exact(digits("0987777212")));
-    let deny = rule(2, Effect::Deny, Matcher::StartsWith(digits("0987777")));
+    let deny = rule(2, Effect::Deny, Matcher::StartsWith(prefix("0987777")));
 
     assert!(allow.specificity() > deny.specificity());
 }
 
 #[test]
 fn nested_denies_of_different_width_rank_in_order() {
-    let broad = rule(1, Effect::Deny, Matcher::StartsWith(digits("09")));
-    let mid = rule(2, Effect::Deny, Matcher::StartsWith(digits("0987")));
-    let narrow = rule(3, Effect::Deny, Matcher::StartsWith(digits("0987777")));
+    let broad = rule(1, Effect::Deny, Matcher::StartsWith(prefix("09")));
+    let mid = rule(2, Effect::Deny, Matcher::StartsWith(prefix("0987")));
+    let narrow = rule(3, Effect::Deny, Matcher::StartsWith(prefix("0987777")));
 
     assert!(narrow.specificity() > mid.specificity());
     assert!(mid.specificity() > broad.specificity());
@@ -97,9 +105,9 @@ fn a_pattern_ranks_on_the_digits_it_pins_not_its_length() {
 #[test]
 fn a_rule_set_is_ordered_from_most_specific_to_least() {
     let set = RuleSet::new(vec![
-        rule(1, Effect::Deny, Matcher::StartsWith(digits("09"))),
+        rule(1, Effect::Deny, Matcher::StartsWith(prefix("09"))),
         rule(2, Effect::Allow, Matcher::Exact(digits("0987777212"))),
-        rule(3, Effect::Deny, Matcher::StartsWith(digits("0987777"))),
+        rule(3, Effect::Deny, Matcher::StartsWith(prefix("0987777"))),
     ]);
 
     let order: Vec<u64> = set.iter().map(|r| r.id.0).collect();
@@ -148,7 +156,7 @@ fn two_identical_rules_that_disagree_are_reported() {
 fn a_genuine_specificity_difference_is_not_a_conflict() {
     // This is the case that must NOT fire: the allow simply wins.
     let set = RuleSet::new(vec![
-        rule(1, Effect::Deny, Matcher::StartsWith(digits("0987777"))),
+        rule(1, Effect::Deny, Matcher::StartsWith(prefix("0987777"))),
         rule(2, Effect::Allow, Matcher::Exact(digits("0987777212"))),
     ]);
 
@@ -175,7 +183,7 @@ fn a_prefix_and_a_suffix_of_equal_width_are_reported_as_a_conflict() {
     // the honest answer: R2 forbids resolving a tie silently, and a conflict we
     // failed to notice would be exactly that.
     let set = RuleSet::new(vec![
-        rule(1, Effect::Deny, Matcher::StartsWith(digits("0987"))),
+        rule(1, Effect::Deny, Matcher::StartsWith(prefix("0987"))),
         rule(2, Effect::Allow, Matcher::EndsWith(digits("7212"))),
     ]);
 
@@ -203,7 +211,7 @@ fn a_pattern_outranks_a_prefix_that_pins_the_same_digits() {
     // fixes the length as well as the digits; a prefix also matches anything
     // longer.
     let p = Matcher::Pattern(pattern("0987xxx")).specificity();
-    let s = Matcher::StartsWith(digits("0987")).specificity();
+    let s = Matcher::StartsWith(prefix("0987")).specificity();
 
     assert_eq!(p.pinned(), s.pinned());
     assert!(p > s);
@@ -216,8 +224,8 @@ fn a_pattern_outranks_a_prefix_that_pins_the_same_digits() {
 fn overlap_across_kinds_is_decided_on_the_digits_that_could_coincide() {
     let pat = Matcher::Pattern(pattern("0987xxx"));
 
-    assert!(pat.can_overlap(&Matcher::StartsWith(digits("0987"))));
-    assert!(!pat.can_overlap(&Matcher::StartsWith(digits("0512"))));
+    assert!(pat.can_overlap(&Matcher::StartsWith(prefix("0987"))));
+    assert!(!pat.can_overlap(&Matcher::StartsWith(prefix("0512"))));
 
     assert!(pat.can_overlap(&Matcher::EndsWith(digits("212"))));
     assert!(
@@ -234,10 +242,10 @@ fn overlap_across_kinds_is_decided_on_the_digits_that_could_coincide() {
 
 #[test]
 fn one_prefix_inside_another_overlaps_and_a_diverging_pair_does_not() {
-    let broad = Matcher::StartsWith(digits("0987"));
+    let broad = Matcher::StartsWith(prefix("0987"));
 
-    assert!(broad.can_overlap(&Matcher::StartsWith(digits("098777"))));
-    assert!(!broad.can_overlap(&Matcher::StartsWith(digits("0512"))));
+    assert!(broad.can_overlap(&Matcher::StartsWith(prefix("098777"))));
+    assert!(!broad.can_overlap(&Matcher::StartsWith(prefix("0512"))));
 }
 
 #[test]
@@ -250,7 +258,7 @@ fn a_caller_id_can_conflict_with_a_number_rule_only_when_equally_specific() {
     ]);
     let name_and_number = RuleSet::new(vec![
         rule(1, Effect::Deny, Matcher::CallerId("Acme".into())),
-        rule(2, Effect::Allow, Matcher::StartsWith(digits("0987"))),
+        rule(2, Effect::Allow, Matcher::StartsWith(prefix("0987"))),
     ]);
 
     assert_eq!(two_names.conflicts().len(), 1);

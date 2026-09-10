@@ -70,6 +70,9 @@ pub enum DatasetError {
     NotUtf8,
     /// An entry points at a name that is not in the table.
     DanglingName { index: u32 },
+    /// A prefix longer than the format stores. Refused rather than dropped: a
+    /// missing prefix is a lookup that silently returns nothing.
+    PrefixTooLong { prefix: String },
     /// Entries are out of order, so lookups would silently miss.
     Unsorted,
 }
@@ -113,7 +116,17 @@ impl Builder {
     ///
     /// `upstream` records which release of the source data this came from, so a
     /// reader can tell whether place names and number metadata agree.
-    pub fn build(&self, kind: Kind, language: &str, upstream: &str) -> Vec<u8> {
+    ///
+    /// Fails on a prefix too long to store rather than dropping it. The longest
+    /// in the vendored data is nine digits, which is why a prefix is a `u32` —
+    /// but a dropped entry would be a lookup that quietly returns nothing, and
+    /// nothing downstream could tell that from a place that has no data.
+    pub fn build(
+        &self,
+        kind: Kind,
+        language: &str,
+        upstream: &str,
+    ) -> Result<Vec<u8>, DatasetError> {
         // Names first, deduplicated. This is the whole reason the format is
         // worth having: seven entries in ten share a name with another.
         let mut names: Vec<&str> = self.entries.values().map(|s| s.as_str()).collect();
@@ -129,9 +142,11 @@ impl Builder {
         // the groups from the longest down.
         let mut by_length: BTreeMap<u8, Vec<(u32, u32)>> = BTreeMap::new();
         for (prefix, name) in &self.entries {
-            let Ok(value) = prefix.parse::<u32>() else {
-                continue;
-            };
+            let value = prefix
+                .parse::<u32>()
+                .map_err(|_| DatasetError::PrefixTooLong {
+                    prefix: prefix.clone(),
+                })?;
             by_length
                 .entry(prefix.len() as u8)
                 .or_default()
@@ -164,7 +179,7 @@ impl Builder {
                 out.extend_from_slice(&name_index.to_le_bytes());
             }
         }
-        out
+        Ok(out)
     }
 }
 
@@ -264,6 +279,35 @@ impl Dataset {
         self.len() == 0
     }
 
+    /// Every prefix this dataset gives that exact name.
+    ///
+    /// The reverse of [`lookup`](Self::lookup), and it returns a set because a
+    /// place is routinely several area codes. Scans the whole dataset: this
+    /// runs when a rule is written, never when a call arrives.
+    pub fn prefixes_named(&self, name: &str) -> Vec<String> {
+        let Some(index) = self.names.iter().position(|n| n == name) else {
+            return Vec::new();
+        };
+        let index = index as u32;
+
+        let mut found = Vec::new();
+        for (length, group) in &self.groups {
+            for (value, name_index) in group {
+                if *name_index == index {
+                    // Restore the leading zeros the integer form dropped.
+                    found.push(format!("{value:0width$}", width = usize::from(*length)));
+                }
+            }
+        }
+        found.sort();
+        found
+    }
+
+    /// Every distinct place name, in order. What a picker offers.
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        self.names.iter().map(String::as_str)
+    }
+
     /// The name for the longest prefix of `digits` that this dataset knows.
     ///
     /// `digits` is an E.164 number without its `+`. Returns `None` when nothing
@@ -346,7 +390,9 @@ mod tests {
 
     #[test]
     fn an_empty_dataset_is_valid_and_finds_nothing() {
-        let bytes = Builder::new().build(Kind::Places, "it", "9.0.33");
+        let bytes = Builder::new()
+            .build(Kind::Places, "it", "9.0.33")
+            .expect("builds");
         let d = Dataset::parse(&bytes).expect("valid");
         assert!(d.is_empty());
         assert_eq!(d.lookup("391"), None);
@@ -362,8 +408,12 @@ mod tests {
         backwards.add("391", "One");
 
         assert_eq!(
-            forwards.build(Kind::Places, "en", "9.0.33"),
-            backwards.build(Kind::Places, "en", "9.0.33")
+            forwards
+                .build(Kind::Places, "en", "9.0.33")
+                .expect("builds"),
+            backwards
+                .build(Kind::Places, "en", "9.0.33")
+                .expect("builds")
         );
     }
 }

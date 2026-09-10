@@ -316,11 +316,19 @@ fn ceiling(templates: &[Template]) -> u64 {
 }
 
 fn prepare<'a>(matcher: &Matcher, database: &'a Database) -> Result<Prepared<'a>, NotExpandable> {
-    // Only the leading fixed digits can say which country this is.
+    // Only the leading fixed digits can say which country this is. Every run of
+    // a prefix set names the same country — they came from one place — so the
+    // first is enough to find it.
     let leading = match matcher {
         Matcher::CallerId(_) => return Err(NotExpandable::CallerId),
         Matcher::EndsWith(_) => return Err(NotExpandable::Suffix),
-        Matcher::Exact(d) | Matcher::StartsWith(d) => d.as_str().to_string(),
+        Matcher::Exact(d) => d.as_str().to_string(),
+        Matcher::StartsWith(p) => p
+            .iter()
+            .next()
+            .ok_or(NotExpandable::NoLengths)?
+            .as_str()
+            .to_string(),
         Matcher::Pattern(p) => p.fixed_prefix(),
     };
 
@@ -355,30 +363,48 @@ fn prepare<'a>(matcher: &Matcher, database: &'a Database) -> Result<Prepared<'a>
                 })
                 .collect(),
         }],
-        // A prefix means one shape per length the country allows, shortest
-        // first — which is also ascending numerically, since every number here
-        // shares a prefix and a longer one is always the larger.
-        Matcher::StartsWith(_) => {
+        // A prefix set means one shape per run per length the country allows.
+        //
+        // Ordering matters and is not obvious. Sorted by total length first,
+        // then by the run's digits, the shapes come out in ascending numeric
+        // order across the whole set: a number with fewer digits is always
+        // smaller, and at equal total length the digits compare the same way
+        // lexicographically as numerically.
+        Matcher::StartsWith(prefixes) => {
             let mut lengths: Vec<u16> = descriptors
                 .iter()
                 .flat_map(|d| d.possible_length().iter().copied())
-                .filter(|l| usize::from(*l) > national.len())
                 .collect();
             lengths.sort_unstable();
             lengths.dedup();
-            lengths
-                .into_iter()
-                .map(|l| Template {
-                    slots: national
-                        .bytes()
-                        .map(|b| Slot::Fixed(b - b'0'))
-                        .chain(std::iter::repeat_n(
-                            Slot::Any,
-                            usize::from(l) - national.len(),
-                        ))
-                        .collect(),
-                })
-                .collect()
+
+            let mut templates: Vec<(usize, String, Template)> = Vec::new();
+            for run in prefixes.iter() {
+                // Each run carries the country code; the national part is what
+                // the lengths are about.
+                let Some(run_national) = run.as_str().get(code_len..) else {
+                    continue;
+                };
+                for length in &lengths {
+                    let length = usize::from(*length);
+                    if length <= run_national.len() {
+                        continue;
+                    }
+                    templates.push((
+                        length,
+                        run_national.to_string(),
+                        Template {
+                            slots: run_national
+                                .bytes()
+                                .map(|b| Slot::Fixed(b - b'0'))
+                                .chain(std::iter::repeat_n(Slot::Any, length - run_national.len()))
+                                .collect(),
+                        },
+                    ));
+                }
+            }
+            templates.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+            templates.into_iter().map(|(_, _, t)| t).collect()
         }
         Matcher::CallerId(_) | Matcher::EndsWith(_) => unreachable!("returned above"),
     };

@@ -177,7 +177,8 @@ fn matches(matcher: &Matcher, call: &Call<'_>) -> bool {
     let digits = call.number().digits();
     match matcher {
         Matcher::Exact(d) => digits == d.as_str(),
-        Matcher::StartsWith(d) => digits.starts_with(d.as_str()),
+        // Any of the runs leading the number is a match. Allocates nothing.
+        Matcher::StartsWith(p) => p.any_leads(digits),
         Matcher::EndsWith(d) => digits.ends_with(d.as_str()),
         Matcher::Pattern(p) => p.matches_str(digits),
         // Networks are not consistent about case, and a user typing a company

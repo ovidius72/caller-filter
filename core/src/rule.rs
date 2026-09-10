@@ -102,6 +102,86 @@ fn is_separator(c: char) -> bool {
     c.is_whitespace() || matches!(c, '.' | '-' | '/' | '(' | ')' | '+')
 }
 
+/// One or more leading-digit runs, any of which matches.
+///
+/// A single prefix is a set of one, so there is no separate code path for the
+/// common case. The set exists because a place is not one prefix: "Turin" is
+/// three area codes in the Italian data and "Guangzhou, Guangdong" is 1,565 in
+/// the Chinese. Picking one of them would block part of a city and look like it
+/// had worked, which is the silent narrowing R2 forbids.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Prefixes {
+    /// Sorted and deduplicated, never empty.
+    runs: Vec<Digits>,
+}
+
+impl Prefixes {
+    /// One prefix.
+    pub fn one(prefix: Digits) -> Self {
+        Prefixes { runs: vec![prefix] }
+    }
+
+    /// Several. Returns `None` when the set is empty, because a rule matching
+    /// nothing is not a rule — a place that resolves to no prefix has to be
+    /// reported, not quietly turned into a rule that never fires.
+    ///
+    /// Runs that sit inside another run are dropped. A number under `390111234`
+    /// is already under `39011123`, so keeping both would change nothing about
+    /// what matches while making the runs overlap — and overlapping runs
+    /// produce the same number twice during expansion, which iOS rejects the
+    /// whole request for. What is left is pairwise disjoint.
+    pub fn many(mut runs: Vec<Digits>) -> Option<Self> {
+        runs.sort();
+        runs.dedup();
+
+        // Sorted, so a run that contains another always comes first.
+        let mut minimal: Vec<Digits> = Vec::with_capacity(runs.len());
+        for run in runs {
+            let covered = minimal
+                .last()
+                .is_some_and(|kept| run.as_str().starts_with(kept.as_str()));
+            if !covered {
+                minimal.push(run);
+            }
+        }
+
+        if minimal.is_empty() {
+            return None;
+        }
+        Some(Prefixes { runs: minimal })
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Digits> {
+        self.runs.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.runs.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.runs.is_empty()
+    }
+
+    /// The fewest digits any of them pins.
+    ///
+    /// Specificity is the broadest thing the rule matches, deliberately.
+    /// A city's area codes differ in length — 39011 is five digits, 390122 is
+    /// six — and the rule matches a number under any of them. Ranking it by the
+    /// longest would claim a precision it does not have, and let it beat a rule
+    /// that is genuinely narrower.
+    fn shortest(&self) -> usize {
+        self.runs.iter().map(|d| d.len()).min().unwrap_or(0)
+    }
+
+    /// True when any of these runs leads `digits`.
+    ///
+    /// Allocates nothing: the evaluator calls this on the call path.
+    pub fn any_leads(&self, digits: &str) -> bool {
+        self.runs.iter().any(|d| digits.starts_with(d.as_str()))
+    }
+}
+
 /// One position in a pattern.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Atom {
@@ -250,12 +330,29 @@ impl Pattern {
     }
 }
 
-/// A place the user picked, in whatever form the geocoder understands.
+/// A place the user picked.
 ///
-/// Opaque here on purpose: Guidelines §1 keeps place names out of the core, so
-/// this carries a reference and the geocoder resolves it from data.
+/// Holds the name exactly as the data spells it, plus the language that
+/// spelling came from — the same place is spelled differently in each language,
+/// and a rule written in one must keep resolving if the user later switches the
+/// app to another.
+///
+/// The core never invents one of these. The UI offers places the data actually
+/// contains, so no name is ever typed or guessed.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LocationRef(pub String);
+pub struct LocationRef {
+    pub name: String,
+    pub language: String,
+}
+
+impl LocationRef {
+    pub fn new(name: &str, language: &str) -> Self {
+        LocationRef {
+            name: name.to_string(),
+            language: language.to_string(),
+        }
+    }
+}
 
 /// What the evaluator matches against. Five kinds, and location is not one of
 /// them — it has already become a prefix by the time evaluation runs.
@@ -263,8 +360,9 @@ pub struct LocationRef(pub String);
 pub enum Matcher {
     /// Every digit fixed, and the length with them.
     Exact(Digits),
-    /// Fixed leading digits, any tail. A dialling prefix resolves to this.
-    StartsWith(Digits),
+    /// Fixed leading digits, any tail. A dialling prefix resolves to this, and
+    /// so does a place — which is why it is a set rather than one run.
+    StartsWith(Prefixes),
     /// Fixed trailing digits, any head.
     EndsWith(Digits),
     /// Positional digits and wildcards.
@@ -278,7 +376,8 @@ impl Matcher {
     pub fn specificity(&self) -> Specificity {
         match self {
             Matcher::Exact(d) => Specificity::new(d.len(), true),
-            Matcher::StartsWith(d) | Matcher::EndsWith(d) => Specificity::new(d.len(), false),
+            Matcher::StartsWith(p) => Specificity::new(p.shortest(), false),
+            Matcher::EndsWith(d) => Specificity::new(d.len(), false),
             Matcher::Pattern(p) => Specificity {
                 pinned: p.pinned,
                 fixes_length: true,
@@ -306,16 +405,17 @@ impl Matcher {
             (CallerId(_), _) | (_, CallerId(_)) => true,
 
             (Exact(a), Exact(b)) => a == b,
-            (Exact(e), StartsWith(p)) | (StartsWith(p), Exact(e)) => {
-                e.as_str().starts_with(p.as_str())
-            }
+            (Exact(e), StartsWith(p)) | (StartsWith(p), Exact(e)) => p.any_leads(e.as_str()),
             (Exact(e), EndsWith(s)) | (EndsWith(s), Exact(e)) => e.as_str().ends_with(s.as_str()),
             (Exact(e), Pattern(p)) | (Pattern(p), Exact(e)) => p.matches_digits(e),
 
-            // One prefix contains the other, or they diverge and share nothing.
-            (StartsWith(a), StartsWith(b)) => {
-                a.as_str().starts_with(b.as_str()) || b.as_str().starts_with(a.as_str())
-            }
+            // Any run of one containing any run of the other is enough: the two
+            // rules then share at least one number.
+            (StartsWith(a), StartsWith(b)) => a.iter().any(|x| {
+                b.iter().any(|y| {
+                    x.as_str().starts_with(y.as_str()) || y.as_str().starts_with(x.as_str())
+                })
+            }),
             (EndsWith(a), EndsWith(b)) => {
                 a.as_str().ends_with(b.as_str()) || b.as_str().ends_with(a.as_str())
             }
@@ -324,7 +424,9 @@ impl Matcher {
             (StartsWith(_), EndsWith(_)) | (EndsWith(_), StartsWith(_)) => true,
 
             (Pattern(a), Pattern(b)) => a.compatible_with(b),
-            (Pattern(p), StartsWith(d)) | (StartsWith(d), Pattern(p)) => p.compatible_with_lead(d),
+            (Pattern(p), StartsWith(s)) | (StartsWith(s), Pattern(p)) => {
+                s.iter().any(|d| p.compatible_with_lead(d))
+            }
             (Pattern(p), EndsWith(d)) | (EndsWith(d), Pattern(p)) => p.compatible_with_tail(d),
         }
     }
@@ -346,25 +448,30 @@ pub enum Authored {
     Location(LocationRef),
 }
 
-/// Supplies the prefix behind a place. Implemented by the geocoder in
-/// P004(F002); declared here so resolution has a boundary and the evaluator
-/// stays total.
+/// Supplies the prefixes behind a place. Implemented by the geocoder; declared
+/// here so resolution has a boundary and the evaluator stays total.
+///
+/// Returns every prefix that names the place, not one. A place is routinely
+/// several area codes, and returning the first would block part of a city while
+/// looking like it had worked.
 pub trait PrefixSource {
-    fn prefix_for(&self, location: &LocationRef) -> Option<Digits>;
+    fn prefixes_for(&self, location: &LocationRef) -> Vec<Digits>;
 }
 
 impl Authored {
     /// Turn an authored rule into the matcher the evaluator understands.
     ///
-    /// Returns `None` when a location has no prefix in the current data. That
+    /// Returns `None` when a location names no prefix in the current data. That
     /// is a real state, not an error: metadata changes, and a place that
     /// resolved last month may not today. The caller has to tell the user the
-    /// rule is not matching rather than pretend it still is.
+    /// rule stopped matching rather than pretend it still does.
     pub fn resolve(&self, places: &dyn PrefixSource) -> Option<Matcher> {
         match self {
             Authored::Direct(m) => Some(m.clone()),
-            Authored::Prefix(d) => Some(Matcher::StartsWith(d.clone())),
-            Authored::Location(loc) => places.prefix_for(loc).map(Matcher::StartsWith),
+            Authored::Prefix(d) => Some(Matcher::StartsWith(Prefixes::one(d.clone()))),
+            Authored::Location(loc) => {
+                Prefixes::many(places.prefixes_for(loc)).map(Matcher::StartsWith)
+            }
         }
     }
 }
@@ -403,12 +510,30 @@ impl Specificity {
     }
 }
 
+/// How a rule was written, where that changes what can be said about it.
+///
+/// A resolved location is indistinguishable from a hand-typed prefix once it
+/// has resolved — they are the same match. But only one of them carries a
+/// caveat the user has to be told: mobile numbering is not geographic anywhere,
+/// so a rule written against a place can never match a mobile. Keeping the
+/// origin is what lets `explain` say that.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Origin {
+    /// Written as digits, a pattern, or a name.
+    #[default]
+    Direct,
+    /// Written as a place, and resolved through the geocoder.
+    Location,
+}
+
 /// A rule in the form the evaluator consumes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rule {
     pub id: RuleId,
     pub effect: Effect,
     pub matcher: Matcher,
+    /// How the user wrote it. Does not affect matching.
+    pub origin: Origin,
 }
 
 impl Rule {
@@ -417,6 +542,17 @@ impl Rule {
             id,
             effect,
             matcher,
+            origin: Origin::Direct,
+        }
+    }
+
+    /// A rule the user wrote as a place.
+    pub fn from_location(id: RuleId, effect: Effect, matcher: Matcher) -> Self {
+        Rule {
+            id,
+            effect,
+            matcher,
+            origin: Origin::Location,
         }
     }
 
@@ -523,27 +659,28 @@ mod tests {
     fn exact_beats_a_prefix_that_pins_the_same_digits() {
         let d = Digits::parse("123").unwrap();
         let exact = Matcher::Exact(d.clone()).specificity();
-        let prefix = Matcher::StartsWith(d).specificity();
+        let prefix = Matcher::StartsWith(Prefixes::one(d)).specificity();
         assert!(exact > prefix, "an exact number also fixes the length");
     }
 
     #[test]
     fn more_digits_beats_fewer() {
-        let long = Matcher::StartsWith(Digits::parse("123").unwrap()).specificity();
-        let short = Matcher::StartsWith(Digits::parse("12").unwrap()).specificity();
+        let long = Matcher::StartsWith(Prefixes::one(Digits::parse("123").unwrap())).specificity();
+        let short = Matcher::StartsWith(Prefixes::one(Digits::parse("12").unwrap())).specificity();
         assert!(long > short);
     }
 
     #[test]
     fn a_caller_id_is_the_least_specific_thing_a_user_can_write() {
         let name = Matcher::CallerId("anyone".into()).specificity();
-        let one_digit = Matcher::StartsWith(Digits::parse("1").unwrap()).specificity();
+        let one_digit =
+            Matcher::StartsWith(Prefixes::one(Digits::parse("1").unwrap())).specificity();
         assert!(name < one_digit);
     }
 
     #[test]
     fn a_prefix_and_a_suffix_of_equal_length_tie() {
-        let starts = Matcher::StartsWith(Digits::parse("12").unwrap()).specificity();
+        let starts = Matcher::StartsWith(Prefixes::one(Digits::parse("12").unwrap())).specificity();
         let ends = Matcher::EndsWith(Digits::parse("34").unwrap()).specificity();
         assert_eq!(starts, ends, "neither pins more than the other");
     }

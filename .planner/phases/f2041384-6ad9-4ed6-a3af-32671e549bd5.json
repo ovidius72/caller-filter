@@ -138,11 +138,20 @@
       "priority": 2,
       "shortName": "resolve-a-place-to-its-prefixe",
       "title": "Resolve a place to its prefixes, fixing the one-prefix assumption",
-      "status": "planned",
+      "status": "in-progress",
       "description": "DEPENDS ON P004(F002)/T016 for the dataset holder.\n\nA BUG IN THE RULE MODEL, found while reading the real data on 2026-09-10. P002(F002)/T004 defined:\n\n    pub trait PrefixSource {\n        fn prefix_for(&self, location: &LocationRef) -> Option<Digits>;\n    }\n\nand Authored::Location resolves through it to exactly one Matcher::StartsWith. THE DATA DOES NOT WORK THAT WAY. A city routinely has several area codes:\n- \"Turin\" appears 3 times in the Italian data (39011, 390122, 390125).\n- \"Guangzhou, Guangdong\" appears 1,565 times in the Chinese data.\n\nSo \"block Turin\" cannot be represented today. The current model would silently pick one prefix and block a third of the city, which is precisely the silent narrowing R2 forbids. Nothing fails: the rule looks fine, and calls from the other two area codes get through.\n\nGOAL. Make a location resolve to the SET of prefixes that name it, and carry that through the model, the evaluator and expansion without any of them special-casing location.\n\nWHAT TO BUILD:\n1. Replace prefix_for with something returning all matching prefixes. Keep it a trait so the geocoder is injected rather than reached for.\n2. Decide how a multi-prefix location is represented. Two candidates, and this is the real design decision of the task:\n   - resolve one authored rule into several rules, one per prefix — simple, but rule ids stop being one-to-one with what the user wrote, and the UI has to re-group them to show one rule;\n   - give Matcher a variant matching any of a set of prefixes — one rule stays one rule, but specificity, overlap and expansion all need to handle it.\n   Whichever is chosen, write down why in the completion, because both have a cost that shows up later.\n3. Specificity for a multi-prefix match. Prefixes for one city are usually different lengths (39011 is 5, 390122 is 6). The safe reading is the SHORTEST, since that is the broadest thing the rule matches — but say so explicitly rather than leaving it to fall out.\n4. Expansion must cover every prefix, and the result must still be ascending and free of duplicates. Two area codes of a city can overlap in the block list.\n5. Matching a place name is not exact-string business: names carry a region suffix (\"Guangzhou, Guangdong\"), and the UI will offer a picked place rather than typed text. Decide what a LocationRef actually holds and keep it opaque to the core.\n\nALSO REQUIRED BY R2. Location rules match landlines only, because mobile numbering is not geographic anywhere. Verified: Italy has 0 geocoding entries for 393 and 121 for 390. A location rule therefore cannot block a mobile, and explain() should say so on every surface.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code.\n- Guidelines §3: this is filtering logic, so it lives in the core.\n- The evaluator's matching path must stay allocation-free.\n\nEDGE CASES to test: a place with one prefix; a place with three; a place with over a thousand; a place that resolves to nothing, which is legal because metadata changes; two places whose prefixes overlap; a location rule against a country with no geocoding data at all; the same place name in two languages.\n\nDONE WHEN. A location rule with several prefixes blocks all of them, is one rule to the user, expansion stays ascending and duplicate-free, explain() reports the landline-only limit, every P002 and P003 test still passes, and cargo test / fmt / clippy -D warnings / both lints pass.",
       "descriptionUpdatedAt": "2026-09-10T14:40:36.288Z",
       "notes": "",
-      "statusLog": [],
+      "statusLog": [
+        {
+          "id": "ad26ebc1-4d20-4345-bfdc-23a8f098110a-check-001-planned-in-progress",
+          "date": "2026-09-10T14:46:32.541Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
       "decisions": [],
       "acceptedDecisions": [],
       "checklist": [
@@ -211,15 +220,20 @@
       "dependsOn": [],
       "pauseSnapshot": null,
       "pauseHistory": [],
-      "startedAt": "",
+      "startedAt": "2026-09-10T14:46:32.541Z",
       "completedAt": "",
       "createdAt": "2026-09-10T14:40:36.275Z",
-      "updatedAt": "2026-09-10T14:40:36.275Z",
-      "sessionInfo": []
+      "updatedAt": "2026-09-10T14:46:32.541Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-10T14:46:32.514Z"
+        }
+      ]
     }
   ],
   "createdAt": "2026-09-08T08:30:16.417Z",
-  "updatedAt": "2026-09-10T14:45:50.999Z",
+  "updatedAt": "2026-09-10T14:46:32.541Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -238,7 +252,7 @@
   "sessionInfo": [
     {
       "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
-      "createdAt": "2026-09-10T14:40:41.838Z"
+      "createdAt": "2026-09-10T14:46:32.514Z"
     }
   ]
 }

@@ -10,7 +10,7 @@ fn sample() -> Vec<u8> {
     b.add("391", "One");
     b.add("3912", "Two");
     b.add("392", "Three");
-    b.build(Kind::Places, "en", "9.0.33")
+    b.build(Kind::Places, "en", "9.0.33").expect("builds")
 }
 
 #[test]

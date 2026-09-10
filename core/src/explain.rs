@@ -8,7 +8,7 @@
 use phonenumber::metadata::Database;
 
 use crate::expand::{expand_matcher, Budget, Expansion, NotExpandable};
-use crate::rule::{Effect, Matcher, Rule, RuleId, RuleSet};
+use crate::rule::{Effect, Matcher, Origin, Rule, RuleId, RuleSet};
 
 /// A place rules are applied, described by what it can do rather than by name.
 ///
@@ -49,12 +49,25 @@ pub enum Verdict {
     NoEffect,
 }
 
+/// Something true of a rule everywhere, which the user has to be told.
+///
+/// Not a verdict: the rule works. It just does less than the words suggest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Caveat {
+    /// The rule was written against a place, and mobile numbering is not
+    /// geographic anywhere in the world. So it can only ever match landlines,
+    /// on every platform, and no amount of data will change that.
+    LandlinesOnly,
+}
+
 /// A rule and what it does everywhere.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Explanation {
     pub rule: RuleId,
     /// One verdict per surface, in the order the surfaces were given.
     pub verdicts: Vec<(String, Verdict)>,
+    /// True of the rule everywhere, independent of platform.
+    pub caveats: Vec<Caveat>,
 }
 
 impl Explanation {
@@ -110,9 +123,18 @@ pub fn explain(
         })
         .collect();
 
+    // A place cannot name a mobile, so the rule is narrower than it reads. True
+    // on every surface, including the ones that evaluate live, so it belongs
+    // beside the verdicts rather than inside one.
+    let caveats = match rule.origin {
+        Origin::Location => vec![Caveat::LandlinesOnly],
+        Origin::Direct => Vec::new(),
+    };
+
     Explanation {
         rule: rule.id,
         verdicts,
+        caveats,
     }
 }
 

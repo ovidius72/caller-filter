@@ -106,7 +106,9 @@ pub fn build_language(
         }
     }
 
-    let bytes = builder.build(Kind::Places, language, upstream);
+    let bytes = builder
+        .build(Kind::Places, language, upstream)
+        .map_err(|e| format!("cannot pack: {e:?}"))?;
 
     // Read it back before accepting it. The reader checks ordering and every
     // name reference; this checks that nothing was lost on the way.
