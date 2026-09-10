@@ -42,6 +42,12 @@ jobs:
       - name: Vendored data is consistent and attributed
         run: ./tools/check-vendored-data.sh
 
+      # The converter validates what it writes by reading it back, so a failure
+      # here means a dataset would have shipped with prefixes missing. That
+      # makes rules stop matching with nothing logged and nothing on screen.
+      - name: Datasets build and validate
+        run: cargo run -p callerfilter-datasets --bin build-datasets
+
   ios:
     runs-on: macos-15
     steps:
@@ -131,6 +137,6 @@ jobs:
 # Call Directory cap and needs a real iPhone plus human observation of memory and
 # kill behaviour. Run it by hand when testing a new device or iOS version.
 #
-# Also not here yet: the dataset converter (F003). When it lands, add a step that
-# runs it and FAILS THE BUILD on validation errors — a silently truncated dataset
-# makes rules stop matching with no error anywhere, which is close to undebuggable.
+# The dataset converter now runs in the core job. It validates every dataset by
+# reading it back before writing it, so the build fails rather than shipping one
+# with prefixes missing.

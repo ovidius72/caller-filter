@@ -120,11 +120,20 @@
       "priority": 2,
       "shortName": "convert-geocoding-data-into-a",
       "title": "Convert geocoding data into a compact versioned dataset",
-      "status": "planned",
+      "status": "in-progress",
       "description": "DEPENDS ON P006(F003)/T014 for the vendored source.\n\nGOAL. A build tool that turns the vendored text into a compact binary dataset the core reads directly, plus the validation that stops a broken one shipping.\n\nWHY NOT SHIP THE TEXT. 6.6 MB for English alone, 269,380 lines to scan for one lookup. The measured shape says what the format should be: 269,380 prefix entries but only 38,116 distinct place names, so names belong in a deduplicated string table and entries become (prefix, name index). Sorted prefixes give longest-match by binary search — at most fifteen probes, since that is the longest an E.164 number gets.\n\nWHERE THIS RUNS, and it is not where the phase assumed. The phase says the format must survive an iOS extension's memory limit. The geocoder does not run there: the Call Directory extension receives a finished list of numbers, and place names are an app-side concern — turning a place into a prefix when a rule is written, and showing a place for a number in the UI. Design for a phone app, not for the extension. Say so in the code, because the phase description currently implies otherwise.\n\nWHAT TO BUILD:\n1. A converter, as a tool alongside the existing ones in tools/ or a cargo bin. Input: the vendored tree. Output: one dataset file per language.\n2. A container that is SELF-DESCRIBING AND VERSIONED, and describes \"a versioned dataset\" rather than \"geocoding\" — R1's spam list and R7's UI strings ride the same format later, and R5 requires the engine to run against a dataset it was not compiled against. A magic number, a format version, the upstream data version, the language, and a table of contents.\n3. Selective packaging: choose which languages and countries go into a build. English is the only near-complete one, so a sensible default is English plus whatever the user's language covers. Do not bake the choice into code.\n4. VALIDATION THAT FAILS THE BUILD. Every country in the source appears in the output; counts match; prefixes are sorted, unique and parse as digits; every name index resolves. A silently truncated dataset makes rules stop matching with no error anywhere, which the phase calls out as close to undebuggable. CI has a note reserved for exactly this step.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code. Enumerate from the data.\n- Do not assume a fixed shape: coverage per language is wildly uneven (English 151 countries, Italian 2), so absent countries are normal, not an error.\n- Reproducible: the same input must produce a byte-identical output, or the version check in T014 means nothing.\n\nEDGE CASES to test: a language covering two countries; a country whose file is only a licence header; duplicate prefixes within a file; a place name containing the delimiter; non-ASCII names, which most of the non-English data is; the longest prefix in the data; an empty language directory.\n\nDONE WHEN. The converter produces a dataset for every vendored language, validation catches a deliberately truncated input, output is byte-reproducible, and cargo test / fmt / clippy -D warnings / the §1 lint pass.",
       "descriptionUpdatedAt": "2026-09-10T08:22:01.575Z",
       "notes": "",
-      "statusLog": [],
+      "statusLog": [
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-001-planned-in-progress",
+          "date": "2026-09-10T14:26:06.848Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
       "decisions": [],
       "acceptedDecisions": [],
       "checklist": [
@@ -187,15 +196,20 @@
       "dependsOn": [],
       "pauseSnapshot": null,
       "pauseHistory": [],
-      "startedAt": "",
+      "startedAt": "2026-09-10T14:26:06.848Z",
       "completedAt": "",
       "createdAt": "2026-09-10T08:22:01.563Z",
-      "updatedAt": "2026-09-10T08:22:01.563Z",
-      "sessionInfo": []
+      "updatedAt": "2026-09-10T14:26:06.848Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-10T14:26:06.824Z"
+        }
+      ]
     }
   ],
   "createdAt": "2026-09-08T08:30:38.289Z",
-  "updatedAt": "2026-09-10T08:25:04.688Z",
+  "updatedAt": "2026-09-10T14:26:06.848Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -214,7 +228,7 @@
   "sessionInfo": [
     {
       "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
-      "createdAt": "2026-09-10T08:22:07.908Z"
+      "createdAt": "2026-09-10T14:26:06.824Z"
     }
   ]
 }

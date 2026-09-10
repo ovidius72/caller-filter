@@ -18,12 +18,14 @@
 
 uniffi::setup_scaffolding!();
 
+pub mod dataset;
 pub mod evaluate;
 pub mod expand;
 pub mod explain;
 pub mod normalize;
 pub mod rule;
 
+pub use dataset::{Dataset, DatasetError, Kind as DatasetKind};
 pub use evaluate::{evaluate, Call, Verdict, E164};
 pub use expand::{
     expand_matcher, expand_rules, expand_rules_to_vec, upper_bound, BlockList, Budget, Expansion,
