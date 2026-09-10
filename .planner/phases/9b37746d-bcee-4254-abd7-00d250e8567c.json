@@ -353,9 +353,9 @@
       "priority": 4,
       "shortName": "recompute-r2-s-digit-distribut",
       "title": "Recompute R2's digit distribution against the measured cap",
-      "status": "in-progress",
-      "description": "DEPENDS ON P003(F002)/T010 — this uses the real expander.\n\nWHY THIS EXISTS. R2 currently states: 226/244 countries need 4 digits or fewer pinned for mobile, 223/245 for landline, with a hard tail of DE fixedLine 10, AT mobile 8, DE mobile 6, IT fixedLine 7. Both halves of that are wrong, in opposite directions, and the numbers are quoted in the requirement as if measured:\n\n1. They were computed against an assumed cap of 1,000,000. The cap was measured on 2026-09-08 as between 1,900,000 and 2,000,000 (P001(F001)/T001). Roughly double the budget means fewer digits need pinning, so the published figures are PESSIMISTIC — the product promises less than it can deliver.\n\n2. They came from Python prototypes that only SUMMED possibleLengths and never applied the validating pattern. That overestimates expansion badly, which pushes the figures pessimistic again, and much harder for landlines. DE fixedLine summed to 11 trillion, which is not a real number of German landlines.\n\nSo the figures are wrong twice over, both times in the direction of understating what the app can do. Fixing them changes what the UI can promise and is easy to forget, because nothing fails while they are wrong.\n\nGOAL. Recompute the distribution across every territory in the database, using T010's expander with the validating pattern applied and the measured cap injected. Produce, per country and number type, the smallest number of pinned digits whose expansion fits the budget.\n\nWHAT TO PRODUCE:\n1. A test or example in core/ that computes this from the current metadata and is runnable on demand. Not a fixture pasted into a file — metadata changes, and R5 makes over-the-air updates a requirement, so a figure that cannot be recomputed will rot exactly like the current one has.\n2. The recomputed summary written into R2's description via the planner, replacing the stale figures, with a note saying which cap and which method produced them.\n3. The new hard tail — the countries and types that still need the most digits pinned. These are the cases the UI has to be honest about, so they matter more than the headline count.\n\nCONSTRAINTS.\n- Guidelines §1: no country in code. Enumerate territories from the database (Database::iter exists), never from a list in a source file.\n- Guidelines §4: the cap is injected configuration from F001, never a literal. Report which value produced the figures.\n- This is analysis over 245 territories and many lengths, so it may be slow. Do not put it in the default test run if it takes long enough to hurt CI — mark it ignored and say in the completion note how to run it.\n\nHONESTY. Report what is computed, including any territory the expander cannot handle, rather than quietly excluding it from the denominator. The current figures say 244 and 245 for two different types without explaining the difference; the new ones should account for every territory or say why not.\n\nDONE WHEN. The figures are recomputed from real metadata with the regex applied and the measured cap, R2's description is updated through the planner and read back to confirm it persisted, and the recomputation is repeatable by a documented command.",
-      "descriptionUpdatedAt": "2026-09-10T06:20:25.016Z",
+      "status": "done",
+      "description": "DEPENDS ON P003(F002)/T010 — this uses the real expander.\n\nWHY THIS EXISTS. R2 currently states: 226/244 countries need 4 digits or fewer pinned for mobile, 223/245 for landline, with a hard tail of DE fixedLine 10, AT mobile 8, DE mobile 6, IT fixedLine 7. Both halves of that are wrong, in opposite directions, and the numbers are quoted in the requirement as if measured:\n\n1. They were computed against an assumed cap of 1,000,000. The cap was measured on 2026-09-08 as between 1,900,000 and 2,000,000 (P001(F001)/T001). Roughly double the budget means fewer digits need pinning, so the published figures are PESSIMISTIC — the product promises less than it can deliver.\n\n2. They came from Python prototypes that only SUMMED possibleLengths and never applied the validating pattern. That overestimates expansion badly, which pushes the figures pessimistic again, and much harder for landlines. DE fixedLine summed to 11 trillion, which is not a real number of German landlines.\n\nSo the figures are wrong twice over, both times in the direction of understating what the app can do. Fixing them changes what the UI can promise and is easy to forget, because nothing fails while they are wrong.\n\nGOAL. Recompute the distribution across every territory in the database, using T010's expander with the validating pattern applied and the measured cap injected. Produce, per country and number type, the smallest number of pinned digits whose expansion fits the budget.\n\nWHAT TO PRODUCE:\n1. A test or example in core/ that computes this from the current metadata and is runnable on demand. Not a fixture pasted into a file — metadata changes, and R5 makes over-the-air updates a requirement, so a figure that cannot be recomputed will rot exactly like the current one has.\n2. The recomputed summary written into R2's description via the planner, replacing the stale figures, with a note saying which cap and which method produced them.\n3. The new hard tail — the countries and types that still need the most digits pinned. These are the cases the UI has to be honest about, so they matter more than the headline count.\n\nCONSTRAINTS.\n- Guidelines §1: no country in code. Enumerate territories from the database (Database::iter exists), never from a list in a source file.\n- Guidelines §4: the cap is injected configuration from F001, never a literal. Report which value produced the figures.\n- This is analysis over 245 territories and many lengths, so it may be slow. Do not put it in the default test run if it takes long enough to hurt CI — mark it ignored and say in the completion note how to run it.\n\nHONESTY. Report what is computed, including any territory the expander cannot handle, rather than quietly excluding it from the denominator. The current figures say 244 and 245 for two different types without explaining the difference; the new ones should account for every territory or say why not.\n\nDONE WHEN. The figures are recomputed from real metadata with the regex applied and the measured cap, R2's description is updated through the planner and read back to confirm it persisted, and the recomputation is repeatable by a documented command.\n\n---\n**Completion summary:**\nSHIPPED. Commit a8b51d5. R2's description updated through the planner and read back — stale figures gone, new ones present, wrong premise corrected, recompute command included. One checklist item left open on purpose, below.\n\ncore/tests/distribution.rs (new): an ignored analysis that walks every territory and prints a report, plus one always-on test. core/src/expand.rs split into prepare/finish, with a new public upper_bound(matcher, database) that returns the ceiling without generating anything. core/tests/expand_memory.rs rewritten (see the CI note below).\n\nTHE HEADLINE, and it is the opposite of what the task predicted. The task said the old figures were pessimistic and would improve. They got WORSE:\n  old (quoted in R2): 226/244 mobile, 223/245 landline need <=4 digits\n  new:                193/242 mobile, 194/242 landline, of 246 territories\n\nThe reason is METHOD, not data. The old figures counted one number type in isolation. This counts every number under a prefix regardless of type, because that is what actually goes on the block list — a phone does not skip a number for being a mobile rather than a landline. The old figures described something the product never does. Both numbers are \"correct\" for what they measured; only one of them is about this product.\n\nNEW HARD TAIL: DE mobile 9 digits; KR, KZ, NG, RU 8; AT, IN, PH, TH, TR 7. Never fits at any prefix length: DE landline, JP and ID both kinds. Not enough metadata: territory 001, and TA for mobile. All 246 territories are accounted for in one of those buckets — the old figures gave 244 and 245 for two types without explaining the difference, and that gap is now closed.\n\nTWO BELIEFS CORRECTED IN R2:\n1. The cap doubling from an assumed 1,000,000 to the measured ~1,900,000 buys well under one extra digit, so it helps far less than the task assumed.\n2. R2 said \"the expander must apply the validating regex, not merely sum possible lengths — summing materially overestimates, badly for landlines\". That is wrong, measured in T010 and now recorded in R2. The pattern constrains leading digits, not the tail. What it is actually for is keeping numbers that do not exist off the list.\n\nCHECKLIST ITEM LEFT OPEN — C2, \"validating pattern applied, not possibleLengths summed\". The count here IS the sum over possible lengths, deliberately. T010 established that for a viable prefix the pattern does not reduce it, except in 37 of 165 territories and by at most about tenfold. The pattern is applied where it matters: prefixes are taken from each descriptor's own example number, so every prefix measured is one the pattern accepts rather than a shape invented here. Ticking C2 would claim a method the measurements say is pointless. Where the tail does constrain, this reports one digit more than strictly needed — conservative in the safe direction.\n\nGUARD ADDED. the_ceiling_is_never_below_what_is_actually_generated runs in the normal suite and asserts upper_bound never promises fewer numbers than the expander delivers. Every figure above rests on that ceiling, and an optimistic one would be wrong in the dangerous direction: telling a user a rule fits when the phone will reject it.\n\nREPEATABLE, not pasted. The analysis prints rather than asserting a fixture, because metadata changes and R5 makes over-the-air updates a requirement — a pasted number rots exactly the way R2's did. Run it with:\n  cargo test --release --test distribution -- --ignored --nocapture\n\nCI FIX FOUND ALONG THE WAY. The T013 memory tests took 73 seconds in a debug build, which is what CI runs, so every push paid it. They now compare the streaming and collecting paths against each other on a smaller expansion, in under two seconds. That comparison first reported streaming as WORSE than collecting: whichever path is measured first pays for the metadata regex caches, which populate lazily. The caches are warmed before measuring now. The absolute byte threshold it replaced only ever passed because a million numbers dwarfed that fixed overhead.\n\nVERIFIED. cargo test: 98 pass, 1 ignored, 0 fail. cargo fmt --check clean. cargo clippy --all-targets -D warnings clean. tools/check-no-hardcoded-numbering.sh passes. No country appears in code — territories come from Database::iter, prefixes from each descriptor's example.\n\nUNVERIFIED. The cap of 1,800,000 is the default from one device; the real cap is between 1.9M and 2.0M and may differ elsewhere, so every figure moves if that changes — which is the point of it being injected. Nothing here has run on a device.",
+      "descriptionUpdatedAt": "2026-09-10T08:14:21.316Z",
       "notes": "",
       "statusLog": [
         {
@@ -365,6 +365,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-002-in-progress-done",
+          "date": "2026-09-10T08:14:21.314Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "SHIPPED. Commit a8b51d5. R2's description updated through the planner and read back — stale figures gone, new ones present, wrong premise corrected, recompute command included. One checklist item left open on purpose, below.\n\ncore/tests/distribution.rs (new): an ignored analysis that walks every territory and prints a report, plus one always-on test. core/src/expand.rs split into prepare/finish, with a new public upper_bound(matcher, database) that returns the ceiling without generating anything. core/tests/expand_memory.rs rewritten (see the CI note below).\n\nTHE HEADLINE, and it is the opposite of what the task predicted. The task said the old figures were pessimistic and would improve. They got WORSE:\n  old (quoted in R2): 226/244 mobile, 223/245 landline need <=4 digits\n  new:                193/242 mobile, 194/242 landline, of 246 territories\n\nThe reason is METHOD, not data. The old figures counted one number type in isolation. This counts every number under a prefix regardless of type, because that is what actually goes on the block list — a phone does not skip a number for being a mobile rather than a landline. The old figures described something the product never does. Both numbers are \"correct\" for what they measured; only one of them is about this product.\n\nNEW HARD TAIL: DE mobile 9 digits; KR, KZ, NG, RU 8; AT, IN, PH, TH, TR 7. Never fits at any prefix length: DE landline, JP and ID both kinds. Not enough metadata: territory 001, and TA for mobile. All 246 territories are accounted for in one of those buckets — the old figures gave 244 and 245 for two types without explaining the difference, and that gap is now closed.\n\nTWO BELIEFS CORRECTED IN R2:\n1. The cap doubling from an assumed 1,000,000 to the measured ~1,900,000 buys well under one extra digit, so it helps far less than the task assumed.\n2. R2 said \"the expander must apply the validating regex, not merely sum possible lengths — summing materially overestimates, badly for landlines\". That is wrong, measured in T010 and now recorded in R2. The pattern constrains leading digits, not the tail. What it is actually for is keeping numbers that do not exist off the list.\n\nCHECKLIST ITEM LEFT OPEN — C2, \"validating pattern applied, not possibleLengths summed\". The count here IS the sum over possible lengths, deliberately. T010 established that for a viable prefix the pattern does not reduce it, except in 37 of 165 territories and by at most about tenfold. The pattern is applied where it matters: prefixes are taken from each descriptor's own example number, so every prefix measured is one the pattern accepts rather than a shape invented here. Ticking C2 would claim a method the measurements say is pointless. Where the tail does constrain, this reports one digit more than strictly needed — conservative in the safe direction.\n\nGUARD ADDED. the_ceiling_is_never_below_what_is_actually_generated runs in the normal suite and asserts upper_bound never promises fewer numbers than the expander delivers. Every figure above rests on that ceiling, and an optimistic one would be wrong in the dangerous direction: telling a user a rule fits when the phone will reject it.\n\nREPEATABLE, not pasted. The analysis prints rather than asserting a fixture, because metadata changes and R5 makes over-the-air updates a requirement — a pasted number rots exactly the way R2's did. Run it with:\n  cargo test --release --test distribution -- --ignored --nocapture\n\nCI FIX FOUND ALONG THE WAY. The T013 memory tests took 73 seconds in a debug build, which is what CI runs, so every push paid it. They now compare the streaming and collecting paths against each other on a smaller expansion, in under two seconds. That comparison first reported streaming as WORSE than collecting: whichever path is measured first pays for the metadata regex caches, which populate lazily. The caches are warmed before measuring now. The absolute byte threshold it replaced only ever passed because a million numbers dwarfed that fixed overhead.\n\nVERIFIED. cargo test: 98 pass, 1 ignored, 0 fail. cargo fmt --check clean. cargo clippy --all-targets -D warnings clean. tools/check-no-hardcoded-numbering.sh passes. No country appears in code — territories come from Database::iter, prefixes from each descriptor's example.\n\nUNVERIFIED. The cap of 1,800,000 is the default from one device; the real cap is between 1.9M and 2.0M and may differ elsewhere, so every figure moves if that changes — which is the point of it being injected. Nothing here has run on a device."
         }
       ],
       "decisions": [],
@@ -374,7 +382,7 @@
           "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-001-recomputation-runs-over-every-territory-from-database-iter-not-a-list-in-code",
           "number": 1,
           "title": "Recomputation runs over every territory from Database::iter, not a list in code",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-002-validating-pattern-applied-not-possiblelengths-summed",
@@ -386,37 +394,37 @@
           "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-003-measured-cap-injected-and-reported-alongside-the-figures",
           "number": 3,
           "title": "Measured cap injected, and reported alongside the figures",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-004-per-country-and-type-smallest-pinned-digit-count-that-fits",
           "number": 4,
           "title": "Per country and type: smallest pinned-digit count that fits",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-005-new-hard-tail-identified",
           "number": 5,
           "title": "New hard tail identified",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-006-territories-the-expander-cannot-handle-are-reported-not-silently-dropped",
           "number": 6,
           "title": "Territories the expander cannot handle are reported, not silently dropped",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-007-kept-out-of-the-default-test-run-if-slow-with-the-command-documented",
           "number": 7,
           "title": "Kept out of the default test run if slow, with the command documented",
-          "checked": false
+          "checked": true
         },
         {
           "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1-check-008-r2-description-updated-through-the-planner-and-read-back-to-confirm",
           "number": 8,
           "title": "R2 description updated through the planner and read back to confirm",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -424,9 +432,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-10T08:04:51.883Z",
-      "completedAt": "",
+      "completedAt": "2026-09-10T08:14:21.314Z",
       "createdAt": "2026-09-10T06:20:25.005Z",
-      "updatedAt": "2026-09-10T08:04:51.883Z",
+      "updatedAt": "2026-09-10T08:14:21.314Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
@@ -533,7 +541,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:03.596Z",
-  "updatedAt": "2026-09-10T08:04:51.883Z",
+  "updatedAt": "2026-09-10T08:14:21.314Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -546,6 +554,14 @@
       "fromStatus": "draft",
       "toStatus": "in-progress",
       "title": "draft → in-progress",
+      "description": ""
+    },
+    {
+      "id": "558ec564-b231-4cce-9281-21d007f5aa6e",
+      "date": "2026-09-10T08:14:21.325Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
       "description": ""
     }
   ],
