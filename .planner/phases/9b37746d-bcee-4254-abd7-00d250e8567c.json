@@ -37,9 +37,9 @@
       "priority": 1,
       "shortName": "normalize-raw-input-to-e-164",
       "title": "Normalize raw input to E.164",
-      "status": "in-progress",
-      "description": "CURRENT STATE. core/src/evaluate.rs defines E164<'a>, which borrows and validates shape only — it refuses anything that is not digits with an optional leading `+`. Nothing produces one from what a user or an OS actually hands over. The phonenumber crate (0.3.10+9.0.33) is already a dependency (core/Cargo.toml) and is currently unused.\n\nGOAL. normalize(raw: &str, default_region) -> Result<Normalized, ParseError>, in core/src/normalize.rs (new). Two callers, and they differ:\n- The OS hands over a number when a call or message arrives. Android gives a tel: URI from Call.Details; iOS SMS gives ILMessageFilterQueryRequest.sender.\n- The user types a number when writing a rule, often in national form with no country code.\n\nVERIFIED API, checked against the crate source on 2026-09-09:\n- phonenumber::parse(Option<Country>, raw) -> Result<PhoneNumber, ParseError>\n- phonenumber::metadata::DATABASE is the bundled database; Database::by_id(region) -> Option<&Metadata>\n- PhoneNumber formats to E.164 via phonenumber::format(&n).mode(Mode::E164)\nDo not re-derive this; do confirm the exact signatures compile rather than trusting this note.\n\nWHAT TO BUILD:\n1. normalize() producing an owned normalized number that E164::new accepts. E164 borrows, so return an owning type and let callers borrow from it — do not fight the lifetime by allocating inside evaluate.\n2. A default region for the \"user typed a national number\" case. It is a parameter, never a constant: Guidelines §1 forbids a country in code. The shells pass the device region.\n3. Distinguish, in the error, between input that is not a number at all and input that parses but is not valid for its region. The UI must say something different for each — \"that is not a number\" versus \"that is not a valid number in this country\" — and R2's honesty rule means never quietly accepting the second.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or length in code. The default region is data passed in.\n- Guidelines §4: nothing measured written as a literal.\n- Runs on the Android call path inside the five-second screening budget, so parsing must not be gratuitously slow, though this is far cheaper than the budget.\n\nEDGE CASES to test: a number already in E.164; a national number with the default region supplied; a national number with no region supplied (must fail, not guess); leading/trailing whitespace and the separators users type; an extension; a short code; a number valid in one region and not another; empty input; letters.\n\nDONE WHEN. normalize() feeds evaluate() end to end in a test, both error cases are distinguishable, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass. Number-shaped fixtures go in core/tests/, not core/src — the §1 lint scans core/src and that strictness is worth keeping.",
-      "descriptionUpdatedAt": "2026-09-10T06:19:18.007Z",
+      "status": "done",
+      "description": "CURRENT STATE. core/src/evaluate.rs defines E164<'a>, which borrows and validates shape only — it refuses anything that is not digits with an optional leading `+`. Nothing produces one from what a user or an OS actually hands over. The phonenumber crate (0.3.10+9.0.33) is already a dependency (core/Cargo.toml) and is currently unused.\n\nGOAL. normalize(raw: &str, default_region) -> Result<Normalized, ParseError>, in core/src/normalize.rs (new). Two callers, and they differ:\n- The OS hands over a number when a call or message arrives. Android gives a tel: URI from Call.Details; iOS SMS gives ILMessageFilterQueryRequest.sender.\n- The user types a number when writing a rule, often in national form with no country code.\n\nVERIFIED API, checked against the crate source on 2026-09-09:\n- phonenumber::parse(Option<Country>, raw) -> Result<PhoneNumber, ParseError>\n- phonenumber::metadata::DATABASE is the bundled database; Database::by_id(region) -> Option<&Metadata>\n- PhoneNumber formats to E.164 via phonenumber::format(&n).mode(Mode::E164)\nDo not re-derive this; do confirm the exact signatures compile rather than trusting this note.\n\nWHAT TO BUILD:\n1. normalize() producing an owned normalized number that E164::new accepts. E164 borrows, so return an owning type and let callers borrow from it — do not fight the lifetime by allocating inside evaluate.\n2. A default region for the \"user typed a national number\" case. It is a parameter, never a constant: Guidelines §1 forbids a country in code. The shells pass the device region.\n3. Distinguish, in the error, between input that is not a number at all and input that parses but is not valid for its region. The UI must say something different for each — \"that is not a number\" versus \"that is not a valid number in this country\" — and R2's honesty rule means never quietly accepting the second.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or length in code. The default region is data passed in.\n- Guidelines §4: nothing measured written as a literal.\n- Runs on the Android call path inside the five-second screening budget, so parsing must not be gratuitously slow, though this is far cheaper than the budget.\n\nEDGE CASES to test: a number already in E.164; a national number with the default region supplied; a national number with no region supplied (must fail, not guess); leading/trailing whitespace and the separators users type; an extension; a short code; a number valid in one region and not another; empty input; letters.\n\nDONE WHEN. normalize() feeds evaluate() end to end in a test, both error cases are distinguishable, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass. Number-shaped fixtures go in core/tests/, not core/src — the §1 lint scans core/src and that strictness is worth keeping.\n\n---\n**Completion summary:**\nSHIPPED. Commit e0b122e.\n\ncore/src/normalize.rs (new) and core/tests/normalize.rs (new, 11 tests). core/src/lib.rs re-exports normalize, Normalized, NormalizeError. The phonenumber crate was a declared dependency and unused until now; this is its first use.\n\nAPI. normalize(raw: &str, default_region: Option<&str>, database: &Database) -> Result<Normalized, NormalizeError>. Normalized owns its E.164 text; Normalized::number() borrows it as E164, so the call path allocates nothing to evaluate. Invariant: the stored string always starts with '+'.\n\nBUG FOUND AND FIXED — the important part of this task. Passing the device region alongside a number that already carries its own country code corrupts it. phonenumber::parse_with applies the hint region's national-prefix rule even to an international number, and countries disagree about the trunk digit. Probed directly against the crate:\n  +390212345678 with no hint  -> national 0212345678, valid\n  +390212345678 with hint DE  -> national 212345678,  INVALID\n  +390212345678 with hint IT  -> national 0212345678, valid\nItaly keeps a leading 0 in the national number; Germany strips one. So a user in Germany writing a rule for an Italian number would have been told the number does not exist. The fix withholds the region whenever the input already starts with '+', which is also the semantically right rule: the region is for reading a national number, and that is not one. Regression test covers both directions (IT number with DE hint, DE number with IT hint). This was found by probing the crate rather than by reasoning — the first version of the code documented the correct behaviour in a comment and did not implement it.\n\nVERIFIED API, probed against phonenumber 0.3.10+9.0.33 rather than assumed: parse_with(&Database, Option<country::Id>, S); is_valid_with(&Database, &PhoneNumber); format(&n).mode(Mode::E164); country::Id derives FromStr via strum EnumString, so a region arrives as a plain string from the shell.\n\nDECISION — the database is a parameter, not the crate's bundled global. R5 requires metadata updates without an app release, and Database::load / Database::parse exist, so F003's over-the-air dataset can replace it. Reaching for DATABASE inside would have closed that off. Callers must supply one; no convenience wrapper using the global was added, deliberately.\n\nDECISION — four distinct errors, because the user needs a different sentence for each and R2 forbids quietly accepting something that can never match. NotANumber; RegionRequired (national input with no region — refused rather than guessed, since guessing silently builds a rule against another country's numbers); UnknownRegion (the shell supplied a region the data does not know, which signals a misconfigured shell); NotValidForRegion (parses but no such number exists). No user-facing wording is in the core — R7 makes UI text a data file.\n\nVERIFIED. cargo test: 61 pass (15 unit, 11 normalize, 17 evaluate, 18 rule_model), 0 fail. cargo fmt --check clean. cargo clippy --all-targets -D warnings clean. tools/check-no-hardcoded-numbering.sh passes. UniFFI binding generation re-run and still succeeds. End-to-end test proves a rule typed nationally matches a call delivered internationally, which is the reason normalization exists.\n\nTEST FIXTURE CORRECTED. A first test used +3900000 expecting NotValidForRegion; that input fails at parse with MalformedInteger, so it never reached validation. Replaced with +3902123, which parses and is invalid — confirmed by probe.\n\nUNVERIFIED. Nothing has run on a device or been called from Swift or Kotlin. The five-second Android budget is not measured against; parsing is far cheaper than that, but this is reasoning, not measurement. Only IT, DE and US were probed — the trunk-digit fix is general, but no systematic sweep across all 245 territories was done. P003(F002)/T012 will exercise every territory and is the natural place for that to surface.\n\nNOT DONE HERE. No expansion (T010), no explain (T011). A tel: URI is not unwrapped — the Android shell passes the number part; if that turns out to be wrong it belongs in the shell, not here.",
+      "descriptionUpdatedAt": "2026-09-10T06:24:44.864Z",
       "notes": "",
       "statusLog": [
         {
@@ -49,6 +49,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-002-in-progress-done",
+          "date": "2026-09-10T06:24:44.862Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "SHIPPED. Commit e0b122e.\n\ncore/src/normalize.rs (new) and core/tests/normalize.rs (new, 11 tests). core/src/lib.rs re-exports normalize, Normalized, NormalizeError. The phonenumber crate was a declared dependency and unused until now; this is its first use.\n\nAPI. normalize(raw: &str, default_region: Option<&str>, database: &Database) -> Result<Normalized, NormalizeError>. Normalized owns its E.164 text; Normalized::number() borrows it as E164, so the call path allocates nothing to evaluate. Invariant: the stored string always starts with '+'.\n\nBUG FOUND AND FIXED — the important part of this task. Passing the device region alongside a number that already carries its own country code corrupts it. phonenumber::parse_with applies the hint region's national-prefix rule even to an international number, and countries disagree about the trunk digit. Probed directly against the crate:\n  +390212345678 with no hint  -> national 0212345678, valid\n  +390212345678 with hint DE  -> national 212345678,  INVALID\n  +390212345678 with hint IT  -> national 0212345678, valid\nItaly keeps a leading 0 in the national number; Germany strips one. So a user in Germany writing a rule for an Italian number would have been told the number does not exist. The fix withholds the region whenever the input already starts with '+', which is also the semantically right rule: the region is for reading a national number, and that is not one. Regression test covers both directions (IT number with DE hint, DE number with IT hint). This was found by probing the crate rather than by reasoning — the first version of the code documented the correct behaviour in a comment and did not implement it.\n\nVERIFIED API, probed against phonenumber 0.3.10+9.0.33 rather than assumed: parse_with(&Database, Option<country::Id>, S); is_valid_with(&Database, &PhoneNumber); format(&n).mode(Mode::E164); country::Id derives FromStr via strum EnumString, so a region arrives as a plain string from the shell.\n\nDECISION — the database is a parameter, not the crate's bundled global. R5 requires metadata updates without an app release, and Database::load / Database::parse exist, so F003's over-the-air dataset can replace it. Reaching for DATABASE inside would have closed that off. Callers must supply one; no convenience wrapper using the global was added, deliberately.\n\nDECISION — four distinct errors, because the user needs a different sentence for each and R2 forbids quietly accepting something that can never match. NotANumber; RegionRequired (national input with no region — refused rather than guessed, since guessing silently builds a rule against another country's numbers); UnknownRegion (the shell supplied a region the data does not know, which signals a misconfigured shell); NotValidForRegion (parses but no such number exists). No user-facing wording is in the core — R7 makes UI text a data file.\n\nVERIFIED. cargo test: 61 pass (15 unit, 11 normalize, 17 evaluate, 18 rule_model), 0 fail. cargo fmt --check clean. cargo clippy --all-targets -D warnings clean. tools/check-no-hardcoded-numbering.sh passes. UniFFI binding generation re-run and still succeeds. End-to-end test proves a rule typed nationally matches a call delivered internationally, which is the reason normalization exists.\n\nTEST FIXTURE CORRECTED. A first test used +3900000 expecting NotValidForRegion; that input fails at parse with MalformedInteger, so it never reached validation. Replaced with +3902123, which parses and is invalid — confirmed by probe.\n\nUNVERIFIED. Nothing has run on a device or been called from Swift or Kotlin. The five-second Android budget is not measured against; parsing is far cheaper than that, but this is reasoning, not measurement. Only IT, DE and US were probed — the trunk-digit fix is general, but no systematic sweep across all 245 territories was done. P003(F002)/T012 will exercise every territory and is the natural place for that to surface.\n\nNOT DONE HERE. No expansion (T010), no explain (T011). A tel: URI is not unwrapped — the Android shell passes the number part; if that turns out to be wrong it belongs in the shell, not here."
         }
       ],
       "decisions": [],
@@ -58,49 +66,49 @@
           "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-001-normalize-raw-default-region-in-core-src-normalize-rs",
           "number": 1,
           "title": "normalize(raw, default_region) in core/src/normalize.rs",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-002-owned-normalized-type-that-e164-new-accepts-without-allocating-in-evaluate",
           "number": 2,
           "title": "Owned normalized type that E164::new accepts without allocating in evaluate",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-003-default-region-is-a-parameter-never-a-constant",
           "number": 3,
           "title": "Default region is a parameter, never a constant",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-004-errors-distinguish-not-a-number-from-not-valid-in-this-region",
           "number": 4,
           "title": "Errors distinguish 'not a number' from 'not valid in this region'",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-005-end-to-end-test-normalize-feeds-evaluate",
           "number": 5,
           "title": "End-to-end test: normalize feeds evaluate",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-006-tests-for-every-edge-case-in-the-description",
           "number": 6,
           "title": "Tests for every edge case in the description",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-007-number-fixtures-in-core-tests-not-core-src",
           "number": 7,
           "title": "Number fixtures in core/tests/, not core/src",
-          "checked": false
+          "checked": true
         },
         {
           "id": "3864d8c6-390b-47c6-94e2-8ea048f376ab-check-008-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
           "number": 8,
           "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -108,9 +116,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-10T06:20:33.693Z",
-      "completedAt": "",
+      "completedAt": "2026-09-10T06:24:44.862Z",
       "createdAt": "2026-09-10T06:19:17.992Z",
-      "updatedAt": "2026-09-10T06:20:33.693Z",
+      "updatedAt": "2026-09-10T06:24:44.862Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
@@ -369,7 +377,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:03.596Z",
-  "updatedAt": "2026-09-10T06:20:33.693Z",
+  "updatedAt": "2026-09-10T06:24:44.862Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
