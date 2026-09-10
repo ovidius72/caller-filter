@@ -250,9 +250,9 @@
       "priority": 3,
       "shortName": "explain-rule-expansion-size-an",
       "title": "explain(rule): expansion size and per-platform verdict",
-      "status": "in-progress",
-      "description": "DEPENDS ON P003(F002)/T010 for the expansion count.\n\nWHY THIS EXISTS. R2's honesty requirement: show each rule's computed expansion size and per-platform verdict from real data, and never silently drop, narrow or partially apply a rule. This is the function that makes that possible, and it is what R8's UI reads. Without it the app either lies by omission or the user discovers a rule does nothing when a call gets through.\n\nGOAL. explain(rule, database, limits) -> Explanation, in core/src/explain.rs (new).\n\nTHE VERDICTS DIFFER BY PLATFORM, and each is a fact already verified in F001 — read F001's description for the evidence rather than re-deriving:\n- Android calls: every rule type evaluates live. No expansion, no limit, always applies. The exception is a withheld caller, which never reaches a screening service at all — no rule can ever act on one, and users will expect otherwise.\n- iOS SMS: every rule type evaluates live. Verdict caps at the Junk folder, not deletion, and only for unknown senders.\n- iOS calls: pre-expanded only. A rule fits, or it is too broad, or it cannot be expressed at all. A CallerId rule cannot apply. An EndsWith rule will almost always be too broad. An allow rule with no enclosing deny is a no-op, and the UI must not imply otherwise.\n- Android SMS: out of scope entirely (R2, decided 2026-09-08) — blocking there means becoming the default SMS app.\n\nWHAT TO BUILD. An Explanation carrying, per rule: the expansion count where one applies, and a per-surface verdict that distinguishes at least: applies live; fits within the budget; too broad for this platform; cannot be expressed on this platform; and no effect. Those are distinct user-facing situations and collapsing them loses the honesty R2 asks for.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or length in code; no platform's limit written as a literal.\n- Guidelines §4: the entry budget is injected configuration from F001's measurement, never a constant.\n- Guidelines §5 and R8: the user sees plain language, never an entry count presented as a setting. This function returns facts; wording is the shell's job. Do not put user-facing English in the core — R7 makes UI text a data file, not code.\n- The surfaces themselves must be data-driven enough that adding one (HarmonyOS is explicitly contemplated in F002) does not mean rewriting this.\n\nEDGE CASES to test: a rule that fits on iOS and applies live on Android; one too broad for iOS but fine on Android; a CallerId rule, which is live on Android and inexpressible on iOS calls; an allow with no enclosing deny; a rule whose country descriptor for that type is absent; a rule whose expansion is exactly at the limit.\n\nDONE WHEN. Every verdict above is produced from real metadata, no user-facing wording lives in the core, the budget is injected, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass. Fixtures in core/tests/.",
-      "descriptionUpdatedAt": "2026-09-10T06:20:03.082Z",
+      "status": "done",
+      "description": "DEPENDS ON P003(F002)/T010 for the expansion count.\n\nWHY THIS EXISTS. R2's honesty requirement: show each rule's computed expansion size and per-platform verdict from real data, and never silently drop, narrow or partially apply a rule. This is the function that makes that possible, and it is what R8's UI reads. Without it the app either lies by omission or the user discovers a rule does nothing when a call gets through.\n\nGOAL. explain(rule, database, limits) -> Explanation, in core/src/explain.rs (new).\n\nTHE VERDICTS DIFFER BY PLATFORM, and each is a fact already verified in F001 — read F001's description for the evidence rather than re-deriving:\n- Android calls: every rule type evaluates live. No expansion, no limit, always applies. The exception is a withheld caller, which never reaches a screening service at all — no rule can ever act on one, and users will expect otherwise.\n- iOS SMS: every rule type evaluates live. Verdict caps at the Junk folder, not deletion, and only for unknown senders.\n- iOS calls: pre-expanded only. A rule fits, or it is too broad, or it cannot be expressed at all. A CallerId rule cannot apply. An EndsWith rule will almost always be too broad. An allow rule with no enclosing deny is a no-op, and the UI must not imply otherwise.\n- Android SMS: out of scope entirely (R2, decided 2026-09-08) — blocking there means becoming the default SMS app.\n\nWHAT TO BUILD. An Explanation carrying, per rule: the expansion count where one applies, and a per-surface verdict that distinguishes at least: applies live; fits within the budget; too broad for this platform; cannot be expressed on this platform; and no effect. Those are distinct user-facing situations and collapsing them loses the honesty R2 asks for.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or length in code; no platform's limit written as a literal.\n- Guidelines §4: the entry budget is injected configuration from F001's measurement, never a constant.\n- Guidelines §5 and R8: the user sees plain language, never an entry count presented as a setting. This function returns facts; wording is the shell's job. Do not put user-facing English in the core — R7 makes UI text a data file, not code.\n- The surfaces themselves must be data-driven enough that adding one (HarmonyOS is explicitly contemplated in F002) does not mean rewriting this.\n\nEDGE CASES to test: a rule that fits on iOS and applies live on Android; one too broad for iOS but fine on Android; a CallerId rule, which is live on Android and inexpressible on iOS calls; an allow with no enclosing deny; a rule whose country descriptor for that type is absent; a rule whose expansion is exactly at the limit.\n\nDONE WHEN. Every verdict above is produced from real metadata, no user-facing wording lives in the core, the budget is injected, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass. Fixtures in core/tests/.\n\n---\n**Completion summary:**\nSHIPPED. Commit e05dd08.\n\ncore/src/explain.rs (new) and core/tests/explain.rs (new, 11 tests). lib.rs re-exports explain, Explanation, Surface, and Verdict as PlatformVerdict (renamed at the boundary because evaluate::Verdict already exists and means something else — one is what happened to a call, the other what a rule will do).\n\nAPI. explain(rule, rules, database, surfaces) -> Explanation { rule, verdicts: Vec<(String, Verdict)> }, with Explanation::on(surface_id) to read one.\n\nDECISION — a surface is data, not a match arm. Surface { id, evaluates_live, matches_caller_id, budget }. The task asked that adding a platform not mean rewriting this, and F002 contemplates HarmonyOS. A test invents a platform and gets a correct verdict with no change to the core. The alternative — an enum of platforms with a branch each — would have put a list of platforms in code, which is the same shape of mistake Guidelines §1 forbids for countries.\n\nDECISION — five verdicts, kept apart. AppliesLive, Fits{entries}, TooBroad{upper_bound}, Inexpressible(reason), NoEffect. These are five different things to tell the person who wrote the rule, and collapsing any two loses exactly what R2 asks for. No English anywhere in them; wording is the shell's, per R7.\n\nThe rule set is a parameter because an allow's effect depends on what encloses it. changes_anything() reuses Matcher::can_overlap from T004 rather than reimplementing overlap.\n\nTWO CASES THAT WOULD OTHERWISE BE INVISIBLE.\n1. A caller-ID rule applies live on Android and on iOS messages, and cannot apply to iOS calls at all — there is no name there. Not too big, not broken: inexpressible, which is a different sentence.\n2. A rule for numbers that do not exist expands cleanly to zero entries. The rule is valid, will never fire, and nothing else in the system would ever say so. Reported as NoEffect on a listed surface, while a live surface honestly still says AppliesLive, because it cannot know in advance that nothing will match.\n\nVERIFIED. cargo test: 98 pass, 0 fail. cargo fmt --check clean. cargo clippy --all-targets -D warnings clean. tools/check-no-hardcoded-numbering.sh passes. UniFFI bindings still generate. Includes a test that a rule exactly the size of the budget fits, because an off-by-one there means telling someone their rule is too big when it is not.\n\nUNVERIFIED. Nothing has run on a device or through Swift or Kotlin. The surface descriptions in the tests are fixtures written from F001's findings; no shell constructs one yet, so whether this shape is convenient for the UI is unproven until F004 and F005.\n\nNOT DONE HERE. Nothing is exported over UniFFI — the FFI surface is P005(F002). The Android-SMS surface is deliberately absent: R2 put it out of scope on 2026-09-08.",
+      "descriptionUpdatedAt": "2026-09-10T08:00:50.479Z",
       "notes": "",
       "statusLog": [
         {
@@ -262,6 +262,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-002-in-progress-done",
+          "date": "2026-09-10T08:00:50.478Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "SHIPPED. Commit e05dd08.\n\ncore/src/explain.rs (new) and core/tests/explain.rs (new, 11 tests). lib.rs re-exports explain, Explanation, Surface, and Verdict as PlatformVerdict (renamed at the boundary because evaluate::Verdict already exists and means something else — one is what happened to a call, the other what a rule will do).\n\nAPI. explain(rule, rules, database, surfaces) -> Explanation { rule, verdicts: Vec<(String, Verdict)> }, with Explanation::on(surface_id) to read one.\n\nDECISION — a surface is data, not a match arm. Surface { id, evaluates_live, matches_caller_id, budget }. The task asked that adding a platform not mean rewriting this, and F002 contemplates HarmonyOS. A test invents a platform and gets a correct verdict with no change to the core. The alternative — an enum of platforms with a branch each — would have put a list of platforms in code, which is the same shape of mistake Guidelines §1 forbids for countries.\n\nDECISION — five verdicts, kept apart. AppliesLive, Fits{entries}, TooBroad{upper_bound}, Inexpressible(reason), NoEffect. These are five different things to tell the person who wrote the rule, and collapsing any two loses exactly what R2 asks for. No English anywhere in them; wording is the shell's, per R7.\n\nThe rule set is a parameter because an allow's effect depends on what encloses it. changes_anything() reuses Matcher::can_overlap from T004 rather than reimplementing overlap.\n\nTWO CASES THAT WOULD OTHERWISE BE INVISIBLE.\n1. A caller-ID rule applies live on Android and on iOS messages, and cannot apply to iOS calls at all — there is no name there. Not too big, not broken: inexpressible, which is a different sentence.\n2. A rule for numbers that do not exist expands cleanly to zero entries. The rule is valid, will never fire, and nothing else in the system would ever say so. Reported as NoEffect on a listed surface, while a live surface honestly still says AppliesLive, because it cannot know in advance that nothing will match.\n\nVERIFIED. cargo test: 98 pass, 0 fail. cargo fmt --check clean. cargo clippy --all-targets -D warnings clean. tools/check-no-hardcoded-numbering.sh passes. UniFFI bindings still generate. Includes a test that a rule exactly the size of the budget fits, because an off-by-one there means telling someone their rule is too big when it is not.\n\nUNVERIFIED. Nothing has run on a device or through Swift or Kotlin. The surface descriptions in the tests are fixtures written from F001's findings; no shell constructs one yet, so whether this shape is convenient for the UI is unproven until F004 and F005.\n\nNOT DONE HERE. Nothing is exported over UniFFI — the FFI surface is P005(F002). The Android-SMS surface is deliberately absent: R2 put it out of scope on 2026-09-08."
         }
       ],
       "decisions": [],
@@ -271,55 +279,55 @@
           "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-001-explain-rule-database-limits-explanation-in-core-src-explain-rs",
           "number": 1,
           "title": "explain(rule, database, limits) -> Explanation in core/src/explain.rs",
-          "checked": false
+          "checked": true
         },
         {
           "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-002-verdicts-distinguish-live-fits-too-broad-inexpressible-no-effect",
           "number": 2,
           "title": "Verdicts distinguish live / fits / too broad / inexpressible / no effect",
-          "checked": false
+          "checked": true
         },
         {
           "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-003-per-surface-with-surfaces-data-driven-rather-than-hardcoded",
           "number": 3,
           "title": "Per-surface, with surfaces data-driven rather than hardcoded",
-          "checked": false
+          "checked": true
         },
         {
           "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-004-entry-budget-injected-from-f001-s-measurement-never-a-literal",
           "number": 4,
           "title": "Entry budget injected from F001's measurement, never a literal",
-          "checked": false
+          "checked": true
         },
         {
           "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-005-no-user-facing-english-in-the-core",
           "number": 5,
           "title": "No user-facing English in the core",
-          "checked": false
+          "checked": true
         },
         {
           "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-006-callerid-on-ios-calls-reported-as-inexpressible",
           "number": 6,
           "title": "CallerId on iOS calls reported as inexpressible",
-          "checked": false
+          "checked": true
         },
         {
           "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-007-allow-with-no-enclosing-deny-reported-as-no-effect",
           "number": 7,
           "title": "Allow with no enclosing deny reported as no effect",
-          "checked": false
+          "checked": true
         },
         {
           "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-008-tests-for-every-edge-case-in-the-description",
           "number": 8,
           "title": "Tests for every edge case in the description",
-          "checked": false
+          "checked": true
         },
         {
           "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-009-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
           "number": 9,
           "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -327,9 +335,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-10T07:56:45.208Z",
-      "completedAt": "",
+      "completedAt": "2026-09-10T08:00:50.478Z",
       "createdAt": "2026-09-10T06:20:03.064Z",
-      "updatedAt": "2026-09-10T07:56:45.208Z",
+      "updatedAt": "2026-09-10T08:00:50.478Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
@@ -511,7 +519,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:03.596Z",
-  "updatedAt": "2026-09-10T07:56:45.208Z",
+  "updatedAt": "2026-09-10T08:00:50.478Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
