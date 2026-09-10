@@ -19,10 +19,12 @@
 uniffi::setup_scaffolding!();
 
 pub mod evaluate;
+pub mod expand;
 pub mod normalize;
 pub mod rule;
 
 pub use evaluate::{evaluate, Call, Verdict, E164};
+pub use expand::{expand_matcher, expand_rules, Budget, Expansion, NotExpandable};
 pub use normalize::{normalize, NormalizeError, Normalized};
 pub use rule::{
     Authored, Conflict, Digits, Effect, LocationRef, Matcher, Pattern, PrefixSource, Rule,

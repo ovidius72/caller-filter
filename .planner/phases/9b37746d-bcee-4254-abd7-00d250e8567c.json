@@ -134,11 +134,20 @@
       "priority": 2,
       "shortName": "range-expansion-for-ios-regex",
       "title": "Range expansion for iOS, regex-pruned and streaming",
-      "status": "planned",
+      "status": "in-progress",
       "description": "DEPENDS ON P003(F002)/T006 for normalization, and on the rule model in P002(F002)/T004.\n\nWHY THIS EXISTS. iOS runs no app code when a call arrives, so rules cannot be evaluated live there. They are turned into a list of exact numbers ahead of time and handed to CallKit. This is the only shipped surface where a rule cannot run live, and it is where R2's promise meets a hard platform limit.\n\nGOAL. expand(rule, metadata, limit) yielding ascending int64 numbers, or reporting TooBroad(count), in core/src/expand.rs (new).\n\nTHE REGEX MUST PRUNE — this is the whole point of the task. Summing possibleLengths alone materially overestimates. Measured worst case: DE fixedLine has ELEVEN possible lengths (5 to 15), so a naive sum gives 11,111,111,111,000 entries for a two-digit prefix, where the validating pattern rejects the overwhelming majority. The Python prototypes that produced the plan's figures only summed lengths and are knowingly wrong here. Do not reproduce that.\n\nVERIFIED API, checked against the crate source on 2026-09-09 — confirm it compiles, do not trust this note blindly:\n- phonenumber::metadata::DATABASE, and Database::by_id(region) -> Option<&Metadata>\n- Metadata::descriptors() -> &Descriptors; Descriptors::get(Type) -> Option<&Descriptor>\n- Descriptor::possible_length() -> &[u16]\n- Descriptor::is_match(&str) -> bool, which applies nationalNumberPattern\nDescriptors::get returns Option because not every country defines every type — do not assume a fixed set (Guidelines §1).\nDatabase::load(path) and Database::parse(content) exist, so F003's over-the-air dataset can replace the bundled one later. Take the database as a parameter rather than reaching for DATABASE inside, or that future is closed off.\n\nEXPANDABILITY DIFFERS BY MATCHER, and this must be explicit rather than discovered:\n- Exact: one number.\n- StartsWith / Prefix: the range under that prefix, pruned by the validating pattern per possible length.\n- Pattern: the cartesian product over wildcard positions, pruned the same way.\n- EndsWith: enumerating every valid number with a given tail means walking a country's whole number space. This will almost always be too broad for iOS. Report it honestly rather than attempting it and timing out.\n- CallerId: cannot be expanded at all. iOS calls have no caller-ID matching, so such a rule simply does not apply there and the user must be told.\n\nALLOW-EXCEPTIONS BY SUBTRACTION. CallKit has no allow list, so an allow rule inside a deny is resolved here by not emitting those numbers — 999 entries instead of 1000. An allow rule with no enclosing deny expands to nothing, because absence already means allowed.\n\nOUTPUT CONTRACT. Strictly ascending int64, no duplicates. iOS requires this (addBlockingEntry withNextSequentialPhoneNumber:) and an out-of-order entry fails the entire extension request, not just that entry. Generate in order and assert monotonicity in a test rather than sorting afterwards.\n\nSTREAMING, NOT MATERIALISING. The extension runs under tight memory limits. Yield incrementally; never build a full Vec of a million numbers. An Iterator is the obvious shape.\n\nTHE LIMIT IS INJECTED. The maximum entry count comes from F001's measurement as configuration (EntryLimit in core/src/lib.rs), never a constant (Guidelines §4). Counting must stop early once the limit is exceeded — do not count to eleven trillion to report TooBroad.\n\nEDGE CASES to test: a prefix that expands to exactly the limit, and one over it; a pattern where the validating regex rejects most candidates; a rule for a country whose descriptor for that type is absent; an allow fully inside a deny; an allow only partly overlapping a deny; two denies that overlap, so a number would otherwise be emitted twice; an EndsWith rule; a CallerId rule.\n\nDONE WHEN. Expansion is correct and ascending, the regex demonstrably prunes (a test asserting a count far below the naive length-sum for a real multi-length country), counting stops early past the limit, memory stays flat for a large expansion, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass. Fixtures in core/tests/.",
       "descriptionUpdatedAt": "2026-09-10T06:19:43.384Z",
       "notes": "",
-      "statusLog": [],
+      "statusLog": [
+        {
+          "id": "7419af3e-aa63-41cf-a607-67e487233f9e-check-001-planned-in-progress",
+          "date": "2026-09-10T07:28:00.359Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
       "decisions": [],
       "acceptedDecisions": [],
       "checklist": [
@@ -213,11 +222,16 @@
       "dependsOn": [],
       "pauseSnapshot": null,
       "pauseHistory": [],
-      "startedAt": "",
+      "startedAt": "2026-09-10T07:28:00.359Z",
       "completedAt": "",
       "createdAt": "2026-09-10T06:19:43.347Z",
-      "updatedAt": "2026-09-10T06:19:43.347Z",
-      "sessionInfo": []
+      "updatedAt": "2026-09-10T07:28:00.359Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-10T07:28:00.329Z"
+        }
+      ]
     },
     {
       "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7",
@@ -377,7 +391,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:03.596Z",
-  "updatedAt": "2026-09-10T06:24:44.862Z",
+  "updatedAt": "2026-09-10T07:28:00.359Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -396,7 +410,7 @@
   "sessionInfo": [
     {
       "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
-      "createdAt": "2026-09-10T06:20:33.661Z"
+      "createdAt": "2026-09-10T07:28:00.329Z"
     }
   ]
 }

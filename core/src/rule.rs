@@ -154,6 +154,34 @@ impl Pattern {
         self.atoms.is_empty()
     }
 
+    /// The positions in order: `Some(digit)` where the pattern fixes one,
+    /// `None` where any digit will do.
+    ///
+    /// Expansion generates numbers from these, so it needs the shape rather
+    /// than only the yes/no of a match.
+    pub fn slots(&self) -> impl Iterator<Item = Option<u8>> + '_ {
+        self.atoms.iter().map(|a| match a {
+            Atom::Digit(d) => Some(*d),
+            Atom::Any => None,
+        })
+    }
+
+    /// The leading digits the pattern fixes, stopping at the first wildcard.
+    ///
+    /// Which country a number belongs to is decided by its leading digits, so
+    /// a pattern whose first positions vary belongs to no country in
+    /// particular and cannot be expanded.
+    pub fn fixed_prefix(&self) -> String {
+        self.atoms
+            .iter()
+            .take_while(|a| matches!(a, Atom::Digit(_)))
+            .map(|a| match a {
+                Atom::Digit(d) => (b'0' + d) as char,
+                Atom::Any => unreachable!("take_while stopped at the first wildcard"),
+            })
+            .collect()
+    }
+
     /// True when this pattern could accept the given digit at that position.
     fn accepts_at(&self, index: usize, digit: u8) -> bool {
         match self.atoms.get(index) {
