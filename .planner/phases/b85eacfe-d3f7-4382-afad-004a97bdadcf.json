@@ -35,9 +35,9 @@
       "priority": 1,
       "shortName": "vendor-the-libphonenumber-sour",
       "title": "Vendor the libphonenumber source data into the repo",
-      "status": "in-progress",
-      "description": "UNBLOCKS P004(F002), the prefix-to-place geocoder, which cannot start without this data.\n\nWHAT WAS FOUND, 2026-09-10. F002 says \"the phonenumber crate has no geocoder\". True of its API, but MISLEADING about the data: the crate ships assets/geocoding — 34 languages, 151 country files under English — and assets/PhoneNumberMetadata.xml. Its build.rs compiles in ONLY the metadata XML. The geocoding files sit in the crate directory unused and unreachable from our code, and will not be in our app.\n\nMEASURED:\n- English geocoding: 269,380 prefix entries across 151 countries, 38,116 distinct place names, 6.6 MB of text.\n- All 34 languages together: 11 MB.\n- Coverage is wildly uneven. English 151 countries; Chinese 130,209 entries; Portuguese 12,237; German 6,545. ITALIAN COVERS EXACTLY TWO COUNTRIES (39 and 41). So R7's fallback to English is not an edge case, it is the normal path for most users.\n- Format is trivial: `<full E.164 prefix>|<place name>` per line, sorted, with an Apache 2.0 header. Example from en/39.txt: `390122|Turin`.\n\nGOAL. Bring the upstream data into the repository so builds are reproducible and do not reach into ~/.cargo.\n\nWHAT TO BUILD:\n1. A vendored copy under a clear path (suggest data/upstream/), carrying both the geocoding tree and PhoneNumberMetadata.xml.\n2. Provenance recorded next to it: which libphonenumber release, which crate version it came from, the date, and how to refresh it. Without this nobody can tell later whether the data matches the metadata the engine validates against — and if the two drift, place names describe prefixes that no longer exist.\n3. Attribution. The data is Apache 2.0 from The Libphonenumber Authors. Keep the licence headers, and add a NOTICE or equivalent recording the source. This is redistribution, so it is not optional.\n4. A check that the vendored data and the metadata the core actually uses came from the same libphonenumber version, failing loudly if not. The crate is phonenumber 0.3.10+9.0.33, where 9.0.33 is the upstream version — so the check has something concrete to compare against.\n\nDECISION TO RECORD: take the data from the crate's own assets rather than fetching libphonenumber upstream. Upstream is newer, but the core validates numbers against the metadata compiled into the crate. If place data is newer than the number metadata, the geocoder will name prefixes the expander rejects. They must move together.\n\nCONSTRAINTS.\n- Guidelines §1: no country in code. This is data, and vendoring it is the point.\n- Vendoring 11 MB is a deliberate repository cost. Take all languages, so choosing which to ship is a packaging decision (T-next) rather than a re-fetch.\n\nDONE WHEN. The data is in the repo with provenance and attribution, the version check exists and passes, nothing reads from ~/.cargo, and a fresh clone can build and convert without network access.",
-      "descriptionUpdatedAt": "2026-09-10T08:21:39.591Z",
+      "status": "done",
+      "description": "UNBLOCKS P004(F002), the prefix-to-place geocoder, which cannot start without this data.\n\nWHAT WAS FOUND, 2026-09-10. F002 says \"the phonenumber crate has no geocoder\". True of its API, but MISLEADING about the data: the crate ships assets/geocoding — 34 languages, 151 country files under English — and assets/PhoneNumberMetadata.xml. Its build.rs compiles in ONLY the metadata XML. The geocoding files sit in the crate directory unused and unreachable from our code, and will not be in our app.\n\nMEASURED:\n- English geocoding: 269,380 prefix entries across 151 countries, 38,116 distinct place names, 6.6 MB of text.\n- All 34 languages together: 11 MB.\n- Coverage is wildly uneven. English 151 countries; Chinese 130,209 entries; Portuguese 12,237; German 6,545. ITALIAN COVERS EXACTLY TWO COUNTRIES (39 and 41). So R7's fallback to English is not an edge case, it is the normal path for most users.\n- Format is trivial: `<full E.164 prefix>|<place name>` per line, sorted, with an Apache 2.0 header. Example from en/39.txt: `390122|Turin`.\n\nGOAL. Bring the upstream data into the repository so builds are reproducible and do not reach into ~/.cargo.\n\nWHAT TO BUILD:\n1. A vendored copy under a clear path (suggest data/upstream/), carrying both the geocoding tree and PhoneNumberMetadata.xml.\n2. Provenance recorded next to it: which libphonenumber release, which crate version it came from, the date, and how to refresh it. Without this nobody can tell later whether the data matches the metadata the engine validates against — and if the two drift, place names describe prefixes that no longer exist.\n3. Attribution. The data is Apache 2.0 from The Libphonenumber Authors. Keep the licence headers, and add a NOTICE or equivalent recording the source. This is redistribution, so it is not optional.\n4. A check that the vendored data and the metadata the core actually uses came from the same libphonenumber version, failing loudly if not. The crate is phonenumber 0.3.10+9.0.33, where 9.0.33 is the upstream version — so the check has something concrete to compare against.\n\nDECISION TO RECORD: take the data from the crate's own assets rather than fetching libphonenumber upstream. Upstream is newer, but the core validates numbers against the metadata compiled into the crate. If place data is newer than the number metadata, the geocoder will name prefixes the expander rejects. They must move together.\n\nCONSTRAINTS.\n- Guidelines §1: no country in code. This is data, and vendoring it is the point.\n- Vendoring 11 MB is a deliberate repository cost. Take all languages, so choosing which to ship is a packaging decision (T-next) rather than a re-fetch.\n\nDONE WHEN. The data is in the repo with provenance and attribution, the version check exists and passes, nothing reads from ~/.cargo, and a fresh clone can build and convert without network access.\n\n---\n**Completion summary:**\nSHIPPED. Commit dfe329b.\n\ndata/upstream/ (new): the geocoding tree (34 languages, 151 English country files) and PhoneNumberMetadata.xml, copied verbatim. data/upstream/PROVENANCE.md, NOTICE, tools/check-vendored-data.sh, and a CI step running it.\n\nWHAT WAS ACTUALLY WRONG IN THE PLAN. F002 says \"the phonenumber crate has no geocoder (the phonenumber crate has none)\". True of its API and misleading about its data: the crate ships assets/geocoding in full. Its build.rs compiles in only PhoneNumberMetadata.xml, so the place files sit in the crate directory unreachable from our code and would never reach the app. The gap was never \"the data does not exist\", it was \"the data is not wired up\" — a different and much smaller problem than the plan implies.\n\nDECISION — copied from the crate, not fetched from libphonenumber upstream. Upstream runs ahead of the crate. The core validates numbers against the metadata compiled into the crate, so if place data were newer the geocoder would name prefixes the expander rejects, and a rule written against a city would stop matching with nothing logged and nothing on screen. Both halves must move together. tools/check-vendored-data.sh enforces it by comparing PROVENANCE.md against the phonenumber version in Cargo.lock.\n\nDECISION — copied into the repo rather than read from ~/.cargo at build time, so a build does not depend on a developer's machine. Verified nothing outside the documented refresh command references that path.\n\nDECISION — all 34 languages vendored, costing 12 MB of repository. Deliberate, so choosing which to ship is a packaging decision in T015 rather than a re-fetch.\n\nCOVERAGE, and it shapes the product rather than being a detail. English is the only near-complete language: 151 countries, 269,380 prefix entries, 38,116 distinct place names. Chinese has 130,209 entries but 2 countries. German 5 countries. ITALIAN COVERS EXACTLY TWO — Italy and Switzerland. So R7's fallback (user's language, then English, then bare prefix) is the normal path for most users, not an edge case, and the UI has to read that way. Recorded in PROVENANCE.md.\n\nVERIFIED, including the failure modes — a check that only ever passes is worthless:\n- Healthy tree passes and reports \"libphonenumber 9.0.33, 34 languages, 151 English countries\".\n- A version mismatch between PROVENANCE.md and Cargo.lock is caught, naming both versions.\n- A truncated English tree is caught, because everything falls back to English so an incomplete English tree breaks place names everywhere.\n- A missing NOTICE is caught. This is Apache 2.0 data being redistributed, so attribution is a licence obligation, not tidiness.\n- FRESH CLONE TESTED, not assumed: cloned to a temp directory, confirmed 151 English files present, `cargo build --offline` succeeded, and both lints pass in the clone.\n- cargo test 98 pass, cargo fmt --check clean, §1 lint clean.\n\nNOT DONE HERE. No converter and no compact format — that is P006(F003)/T015. Nothing in the core reads this data yet. The 38,116-vs-269,380 ratio is recorded because it is what the packed format should exploit, but nothing exploits it so far.\n\nUNVERIFIED. The check compares version strings; it does not hash the data, so a hand-edited file under data/upstream would pass. Byte-level integrity is worth adding when the converter lands and has something to compare against.",
+      "descriptionUpdatedAt": "2026-09-10T08:25:04.689Z",
       "notes": "",
       "statusLog": [
         {
@@ -47,6 +47,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-002-in-progress-done",
+          "date": "2026-09-10T08:25:04.688Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "SHIPPED. Commit dfe329b.\n\ndata/upstream/ (new): the geocoding tree (34 languages, 151 English country files) and PhoneNumberMetadata.xml, copied verbatim. data/upstream/PROVENANCE.md, NOTICE, tools/check-vendored-data.sh, and a CI step running it.\n\nWHAT WAS ACTUALLY WRONG IN THE PLAN. F002 says \"the phonenumber crate has no geocoder (the phonenumber crate has none)\". True of its API and misleading about its data: the crate ships assets/geocoding in full. Its build.rs compiles in only PhoneNumberMetadata.xml, so the place files sit in the crate directory unreachable from our code and would never reach the app. The gap was never \"the data does not exist\", it was \"the data is not wired up\" — a different and much smaller problem than the plan implies.\n\nDECISION — copied from the crate, not fetched from libphonenumber upstream. Upstream runs ahead of the crate. The core validates numbers against the metadata compiled into the crate, so if place data were newer the geocoder would name prefixes the expander rejects, and a rule written against a city would stop matching with nothing logged and nothing on screen. Both halves must move together. tools/check-vendored-data.sh enforces it by comparing PROVENANCE.md against the phonenumber version in Cargo.lock.\n\nDECISION — copied into the repo rather than read from ~/.cargo at build time, so a build does not depend on a developer's machine. Verified nothing outside the documented refresh command references that path.\n\nDECISION — all 34 languages vendored, costing 12 MB of repository. Deliberate, so choosing which to ship is a packaging decision in T015 rather than a re-fetch.\n\nCOVERAGE, and it shapes the product rather than being a detail. English is the only near-complete language: 151 countries, 269,380 prefix entries, 38,116 distinct place names. Chinese has 130,209 entries but 2 countries. German 5 countries. ITALIAN COVERS EXACTLY TWO — Italy and Switzerland. So R7's fallback (user's language, then English, then bare prefix) is the normal path for most users, not an edge case, and the UI has to read that way. Recorded in PROVENANCE.md.\n\nVERIFIED, including the failure modes — a check that only ever passes is worthless:\n- Healthy tree passes and reports \"libphonenumber 9.0.33, 34 languages, 151 English countries\".\n- A version mismatch between PROVENANCE.md and Cargo.lock is caught, naming both versions.\n- A truncated English tree is caught, because everything falls back to English so an incomplete English tree breaks place names everywhere.\n- A missing NOTICE is caught. This is Apache 2.0 data being redistributed, so attribution is a licence obligation, not tidiness.\n- FRESH CLONE TESTED, not assumed: cloned to a temp directory, confirmed 151 English files present, `cargo build --offline` succeeded, and both lints pass in the clone.\n- cargo test 98 pass, cargo fmt --check clean, §1 lint clean.\n\nNOT DONE HERE. No converter and no compact format — that is P006(F003)/T015. Nothing in the core reads this data yet. The 38,116-vs-269,380 ratio is recorded because it is what the packed format should exploit, but nothing exploits it so far.\n\nUNVERIFIED. The check compares version strings; it does not hash the data, so a hand-edited file under data/upstream would pass. Byte-level integrity is worth adding when the converter lands and has something to compare against."
         }
       ],
       "decisions": [],
@@ -56,37 +64,37 @@
           "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-001-geocoding-tree-and-phonenumbermetadata-xml-vendored-under-data-upstream",
           "number": 1,
           "title": "Geocoding tree and PhoneNumberMetadata.xml vendored under data/upstream/",
-          "checked": false
+          "checked": true
         },
         {
           "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-002-provenance-recorded-libphonenumber-release-crate-version-date-refresh-command",
           "number": 2,
           "title": "Provenance recorded: libphonenumber release, crate version, date, refresh command",
-          "checked": false
+          "checked": true
         },
         {
           "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-003-apache-2-0-attribution-kept-and-a-notice-added",
           "number": 3,
           "title": "Apache 2.0 attribution kept and a NOTICE added",
-          "checked": false
+          "checked": true
         },
         {
           "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-004-check-that-vendored-data-and-the-core-s-metadata-share-an-upstream-version",
           "number": 4,
           "title": "Check that vendored data and the core's metadata share an upstream version",
-          "checked": false
+          "checked": true
         },
         {
           "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-005-nothing-reads-from-cargo",
           "number": 5,
           "title": "Nothing reads from ~/.cargo",
-          "checked": false
+          "checked": true
         },
         {
           "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-006-fresh-clone-builds-and-converts-with-no-network",
           "number": 6,
           "title": "Fresh clone builds and converts with no network",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -94,9 +102,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-10T08:22:07.932Z",
-      "completedAt": "",
+      "completedAt": "2026-09-10T08:25:04.688Z",
       "createdAt": "2026-09-10T08:21:39.581Z",
-      "updatedAt": "2026-09-10T08:22:07.932Z",
+      "updatedAt": "2026-09-10T08:25:04.688Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
@@ -187,7 +195,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:38.289Z",
-  "updatedAt": "2026-09-10T08:22:07.932Z",
+  "updatedAt": "2026-09-10T08:25:04.688Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
