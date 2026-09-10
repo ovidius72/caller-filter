@@ -26,7 +26,8 @@
     "3864d8c6-390b-47c6-94e2-8ea048f376ab",
     "7419af3e-aa63-41cf-a607-67e487233f9e",
     "2647e99d-31e0-49c8-8060-5d7f77eda4f7",
-    "ef0257c5-59a4-471d-96ce-57a25bfb5cd1"
+    "ef0257c5-59a4-471d-96ce-57a25bfb5cd1",
+    "45fa2832-5e8e-400b-a253-c14f801ac92d"
   ],
   "tasks": [
     {
@@ -396,10 +397,99 @@
       "createdAt": "2026-09-10T06:20:25.005Z",
       "updatedAt": "2026-09-10T06:20:25.005Z",
       "sessionInfo": []
+    },
+    {
+      "id": "45fa2832-5e8e-400b-a253-c14f801ac92d",
+      "phaseId": "9b37746d-bcee-4254-abd7-00d250e8567c",
+      "number": 13,
+      "shortId": "E6J3J",
+      "priority": 5,
+      "shortName": "stream-rule-set-expansion-inst",
+      "title": "Stream rule-set expansion instead of collecting it",
+      "status": "in-progress",
+      "description": "FOLLOWS P003(F002)/T010, which left this open rather than claiming it done.\n\nTHE PROBLEM. core/src/expand.rs::expand_rules returns Vec<i64>. It collects every number, then sorts and dedups. At the measured iOS budget of 1.8M entries that is roughly 14MB held at once, inside the Call Directory extension — which is exactly the process chosen for its tight memory limit. expand_matcher already streams and holds nothing; the rule-set layer above it undoes that.\n\nNobody notices until the extension is killed on a real phone with a large rule set, and F001 already established that iOS tells the app nothing when it fails at call time. So this is a silent failure waiting for the worst moment.\n\nWHY IT CAN BE FIXED CHEAPLY. Each rule's expansion is already produced in ascending order — that is guaranteed and tested in T010. So the merged stream needs no buffer: a k-way merge over the per-rule iterators yields ascending output directly, where k is the number of deny rules, which is small. Deduplication is just \"skip a value equal to the one just emitted\", because the merge is ordered.\n\nWHAT TO BUILD.\n1. Replace the Vec with an iterator that merges the per-rule Numbers streams. A BinaryHeap of (value, stream index) with reversed ordering is the obvious shape; k is tiny so the heap costs nothing.\n2. Keep the existing behaviour exactly: ascending, no duplicates, and every candidate still passes through evaluate() so the iOS list agrees with what Android decides live. Do not reimplement precedence.\n3. Keep a convenience that collects to a Vec if callers want one, but it must not be what the extension path uses.\n\nPROVE IT, do not assert it. T010 claimed nothing about memory because nothing was measured. Install a counting global allocator in an integration test — an integration test compiles to its own binary, so #[global_allocator] is available there — and assert peak live bytes stay bounded while streaming an expansion far larger than the buffer would have been. A test that only checks the output is unchanged does not close this item.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or length in code.\n- Guidelines §4: the budget stays injected configuration.\n- The output contract is unchanged and is not negotiable: strictly ascending int64, no duplicates. iOS fails the entire request otherwise, not just the offending entry.\n\nEDGE CASES to test: no deny rules; one deny rule; several denies that overlap heavily; a deny whose expansion is empty because the pattern rejects it; an allow carving a number out of the middle of a merged run; streams of very different lengths, so one is exhausted long before the others.\n\nDONE WHEN. expand_rules streams, peak memory is measured and bounded by a test rather than argued, every T010 expansion test still passes unchanged, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass.",
+      "descriptionUpdatedAt": "2026-09-10T07:41:59.228Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-001-planned-in-progress",
+          "date": "2026-09-10T07:42:03.906Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-001-k-way-merge-over-the-per-rule-ascending-iterators",
+          "number": 1,
+          "title": "k-way merge over the per-rule ascending iterators",
+          "checked": false
+        },
+        {
+          "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-002-no-vec-of-the-full-expansion-on-the-streaming-path",
+          "number": 2,
+          "title": "No Vec of the full expansion on the streaming path",
+          "checked": false
+        },
+        {
+          "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-003-ascending-and-deduplicated-asserted-not-sorted",
+          "number": 3,
+          "title": "Ascending and deduplicated, asserted not sorted",
+          "checked": false
+        },
+        {
+          "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-004-every-candidate-still-goes-through-evaluate",
+          "number": 4,
+          "title": "Every candidate still goes through evaluate()",
+          "checked": false
+        },
+        {
+          "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-005-counting-global-allocator-test-proving-peak-memory-is-bounded",
+          "number": 5,
+          "title": "Counting global allocator test proving peak memory is bounded",
+          "checked": false
+        },
+        {
+          "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-006-edge-cases-none-one-overlapping-empty-allow-mid-run-uneven-lengths",
+          "number": 6,
+          "title": "Edge cases: none, one, overlapping, empty, allow mid-run, uneven lengths",
+          "checked": false
+        },
+        {
+          "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-007-all-t010-expansion-tests-still-pass-unchanged",
+          "number": 7,
+          "title": "All T010 expansion tests still pass unchanged",
+          "checked": false
+        },
+        {
+          "id": "45fa2832-5e8e-400b-a253-c14f801ac92d-check-008-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
+          "number": 8,
+          "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-10T07:42:03.906Z",
+      "completedAt": "",
+      "createdAt": "2026-09-10T07:41:59.215Z",
+      "updatedAt": "2026-09-10T07:42:03.906Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-10T07:42:03.878Z"
+        }
+      ]
     }
   ],
   "createdAt": "2026-09-08T08:30:03.596Z",
-  "updatedAt": "2026-09-10T07:39:39.117Z",
+  "updatedAt": "2026-09-10T07:42:03.906Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -418,7 +508,7 @@
   "sessionInfo": [
     {
       "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
-      "createdAt": "2026-09-10T07:28:00.329Z"
+      "createdAt": "2026-09-10T07:42:03.878Z"
     }
   ]
 }

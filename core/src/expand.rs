@@ -416,31 +416,128 @@ pub fn expand_matcher<'a>(
 /// Which rule wins is not decided again here. Each candidate is put through
 /// [`evaluate`], so the list iOS gets means exactly what Android does live.
 /// There is one implementation of precedence and this is not it.
-pub fn expand_rules(rules: &RuleSet, database: &Database, budget: Budget) -> Vec<i64> {
-    let mut out: Vec<i64> = Vec::new();
+pub fn expand_rules<'a>(
+    rules: &'a RuleSet,
+    database: &'a Database,
+    budget: Budget,
+) -> BlockList<'a> {
+    let streams = rules
+        .iter()
+        .filter(|rule| rule.effect == crate::Effect::Deny)
+        .filter_map(
+            |rule| match expand_matcher(&rule.matcher, database, budget) {
+                Expansion::Fits(numbers) => Some(numbers),
+                _ => None,
+            },
+        )
+        .collect();
 
-    for rule in rules.iter() {
-        if rule.effect != crate::Effect::Deny {
-            continue;
-        }
-        if let Expansion::Fits(numbers) = expand_matcher(&rule.matcher, database, budget) {
-            for n in numbers {
-                let text = format!("+{n}");
-                let Some(e164) = E164::new(&text) else {
-                    continue;
-                };
-                if evaluate(&Call::new(e164), rules).decision == Decision::Block {
-                    out.push(n);
+    BlockList {
+        merge: Merge::new(streams),
+        rules,
+        last: None,
+        text: String::with_capacity(24),
+    }
+}
+
+/// Collect a whole block list into memory.
+///
+/// A convenience for tests and for callers that genuinely want the list at
+/// once. The iOS extension must not use this: at the measured budget the list
+/// is millions of numbers, and holding it is what this module exists to avoid.
+pub fn expand_rules_to_vec(rules: &RuleSet, database: &Database, budget: Budget) -> Vec<i64> {
+    expand_rules(rules, database, budget).collect()
+}
+
+/// A k-way merge over already-ascending streams.
+///
+/// Each rule's expansion arrives in order, so the merged order needs no buffer
+/// and no sort — only a peeked head per stream. `k` is the number of deny
+/// rules, which is small, so the heap costs nothing worth measuring.
+#[derive(Debug)]
+struct Merge<'a> {
+    streams: Vec<Numbers<'a>>,
+    /// The next value from each stream, or None once it is exhausted.
+    heads: Vec<Option<i64>>,
+}
+
+impl<'a> Merge<'a> {
+    fn new(mut streams: Vec<Numbers<'a>>) -> Self {
+        let heads = streams.iter_mut().map(|s| s.next()).collect();
+        Merge { streams, heads }
+    }
+
+    /// The smallest head, advancing the stream it came from.
+    fn next(&mut self) -> Option<i64> {
+        let mut best: Option<(usize, i64)> = None;
+        for (i, head) in self.heads.iter().enumerate() {
+            if let Some(v) = *head {
+                if best.is_none_or(|(_, b)| v < b) {
+                    best = Some((i, v));
                 }
             }
         }
+        let (i, v) = best?;
+        self.heads[i] = self.streams[i].next();
+        Some(v)
     }
+}
 
-    // Two denies can cover the same number, and iOS rejects the whole request
-    // if an entry repeats or arrives out of order.
-    out.sort_unstable();
-    out.dedup();
-    out
+/// The numbers a platform that needs exact numbers should block.
+///
+/// Ascending and free of duplicates, produced one at a time. Two rules can
+/// cover the same number and iOS rejects the entire request if an entry repeats
+/// or arrives out of order — but because the merge is ordered, dropping a
+/// repeat is just skipping a value equal to the one before it. No set, no sort,
+/// no list held in memory.
+#[derive(Debug)]
+pub struct BlockList<'a> {
+    merge: Merge<'a>,
+    rules: &'a RuleSet,
+    /// The last value emitted, which is all deduplication needs.
+    last: Option<i64>,
+    /// Reused so the evaluate round trip does not allocate per number.
+    text: String,
+}
+
+impl Iterator for BlockList<'_> {
+    type Item = i64;
+
+    fn next(&mut self) -> Option<i64> {
+        loop {
+            let n = self.merge.next()?;
+            if self.last == Some(n) {
+                continue;
+            }
+            self.last = Some(n);
+
+            // Rendered into the reused buffer through a stack array, so a list
+            // of millions costs no allocations at all.
+            self.text.clear();
+            self.text.push('+');
+            let mut digits = [0u8; 20];
+            let mut at = digits.len();
+            let mut left = n;
+            while left > 0 {
+                at -= 1;
+                digits[at] = b'0' + (left % 10) as u8;
+                left /= 10;
+            }
+            self.text
+                .push_str(std::str::from_utf8(&digits[at..]).expect("digits are ASCII"));
+
+            let Some(e164) = E164::new(&self.text) else {
+                continue;
+            };
+            // Which rule wins is decided in one place, and this is not it. Every
+            // candidate goes through the same evaluation Android runs live, so
+            // the two surfaces cannot drift apart — and allow-exceptions fall
+            // out of it rather than needing subtraction logic of their own.
+            if evaluate(&Call::new(e164), self.rules).decision == Decision::Block {
+                return Some(n);
+            }
+        }
+    }
 }
 
 #[cfg(test)]

@@ -4,8 +4,8 @@
 //! shipped crate and an integration test binary ships with nothing.
 
 use callerfilter_core::{
-    expand_matcher, expand_rules, Budget, Digits, Effect, EntryLimit, Expansion, Matcher, Pattern,
-    Rule, RuleId, RuleSet,
+    expand_matcher, expand_rules_to_vec, Budget, Digits, Effect, EntryLimit, Expansion, Matcher,
+    Pattern, Rule, RuleId, RuleSet,
 };
 use phonenumber::metadata::DATABASE;
 
@@ -205,8 +205,8 @@ fn an_allow_inside_a_deny_removes_exactly_that_number() {
         ),
     ]);
 
-    let all = expand_rules(&deny_only, &DATABASE, budget(10_000));
-    let carved = expand_rules(&with_exception, &DATABASE, budget(10_000));
+    let all = expand_rules_to_vec(&deny_only, &DATABASE, budget(10_000));
+    let carved = expand_rules_to_vec(&with_exception, &DATABASE, budget(10_000));
 
     assert!(!all.is_empty());
     assert_eq!(
@@ -227,7 +227,7 @@ fn an_allow_with_no_enclosing_deny_expands_to_nothing() {
         Matcher::Exact(digits("390212345678")),
     )]);
 
-    assert!(expand_rules(&rules, &DATABASE, budget(10_000)).is_empty());
+    assert!(expand_rules_to_vec(&rules, &DATABASE, budget(10_000)).is_empty());
 }
 
 #[test]
@@ -246,7 +246,7 @@ fn two_overlapping_denies_never_emit_the_same_number_twice() {
         ),
     ]);
 
-    let out = expand_rules(&rules, &DATABASE, budget(10_000));
+    let out = expand_rules_to_vec(&rules, &DATABASE, budget(10_000));
 
     assert!(!out.is_empty());
     assert!(out.windows(2).all(|w| w[0] < w[1]), "ascending, no repeats");
@@ -271,7 +271,7 @@ fn the_list_ios_gets_agrees_with_what_android_decides_live() {
         ),
     ]);
 
-    for n in expand_rules(&rules, &DATABASE, budget(10_000)) {
+    for n in expand_rules_to_vec(&rules, &DATABASE, budget(10_000)) {
         let text = format!("+{n}");
         let e164 = E164::new(&text).expect("generated numbers are well formed");
         assert_eq!(

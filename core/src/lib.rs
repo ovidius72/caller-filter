@@ -24,7 +24,9 @@ pub mod normalize;
 pub mod rule;
 
 pub use evaluate::{evaluate, Call, Verdict, E164};
-pub use expand::{expand_matcher, expand_rules, Budget, Expansion, NotExpandable};
+pub use expand::{
+    expand_matcher, expand_rules, expand_rules_to_vec, BlockList, Budget, Expansion, NotExpandable,
+};
 pub use normalize::{normalize, NormalizeError, Normalized};
 pub use rule::{
     Authored, Conflict, Digits, Effect, LocationRef, Matcher, Pattern, PrefixSource, Rule,
