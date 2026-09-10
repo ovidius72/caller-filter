@@ -1,0 +1,17 @@
+Caller Filter
+Copyright 2026 Antonio Pantano
+
+This product includes data from libphonenumber.
+
+  https://github.com/google/libphonenumber
+  Copyright (C) The Libphonenumber Authors
+  Licensed under the Apache License, Version 2.0
+
+The data is redistributed unmodified under data/upstream/, comprising
+PhoneNumberMetadata.xml and the geocoding place-name files. Each file keeps its
+original licence header. See data/upstream/PROVENANCE.md for the exact upstream
+version and how it was obtained.
+
+You may obtain a copy of the Apache License, Version 2.0 at
+
+  http://www.apache.org/licenses/LICENSE-2.0

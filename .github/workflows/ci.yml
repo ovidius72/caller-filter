@@ -35,6 +35,13 @@ jobs:
       - name: No hardcoded numbering or place data
         run: ./tools/check-no-hardcoded-numbering.sh
 
+      # Place names and number metadata must come from the same libphonenumber
+      # release. When they drift the geocoder names prefixes the expander
+      # rejects, and a rule written against a city stops matching with nothing
+      # logged and nothing on screen to explain it.
+      - name: Vendored data is consistent and attributed
+        run: ./tools/check-vendored-data.sh
+
   ios:
     runs-on: macos-15
     steps:

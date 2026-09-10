@@ -22,15 +22,191 @@
   "decisions": [],
   "acceptedDecisions": [],
   "completionCriteria": [],
-  "taskIds": [],
-  "tasks": [],
+  "taskIds": [
+    "6b5d1878-c4fb-4243-8470-197574b9adc9",
+    "b4087744-33ad-4b37-8c13-13d3e4bb2261"
+  ],
+  "tasks": [
+    {
+      "id": "6b5d1878-c4fb-4243-8470-197574b9adc9",
+      "phaseId": "b85eacfe-d3f7-4382-afad-004a97bdadcf",
+      "number": 14,
+      "shortId": "N62U4",
+      "priority": 1,
+      "shortName": "vendor-the-libphonenumber-sour",
+      "title": "Vendor the libphonenumber source data into the repo",
+      "status": "in-progress",
+      "description": "UNBLOCKS P004(F002), the prefix-to-place geocoder, which cannot start without this data.\n\nWHAT WAS FOUND, 2026-09-10. F002 says \"the phonenumber crate has no geocoder\". True of its API, but MISLEADING about the data: the crate ships assets/geocoding — 34 languages, 151 country files under English — and assets/PhoneNumberMetadata.xml. Its build.rs compiles in ONLY the metadata XML. The geocoding files sit in the crate directory unused and unreachable from our code, and will not be in our app.\n\nMEASURED:\n- English geocoding: 269,380 prefix entries across 151 countries, 38,116 distinct place names, 6.6 MB of text.\n- All 34 languages together: 11 MB.\n- Coverage is wildly uneven. English 151 countries; Chinese 130,209 entries; Portuguese 12,237; German 6,545. ITALIAN COVERS EXACTLY TWO COUNTRIES (39 and 41). So R7's fallback to English is not an edge case, it is the normal path for most users.\n- Format is trivial: `<full E.164 prefix>|<place name>` per line, sorted, with an Apache 2.0 header. Example from en/39.txt: `390122|Turin`.\n\nGOAL. Bring the upstream data into the repository so builds are reproducible and do not reach into ~/.cargo.\n\nWHAT TO BUILD:\n1. A vendored copy under a clear path (suggest data/upstream/), carrying both the geocoding tree and PhoneNumberMetadata.xml.\n2. Provenance recorded next to it: which libphonenumber release, which crate version it came from, the date, and how to refresh it. Without this nobody can tell later whether the data matches the metadata the engine validates against — and if the two drift, place names describe prefixes that no longer exist.\n3. Attribution. The data is Apache 2.0 from The Libphonenumber Authors. Keep the licence headers, and add a NOTICE or equivalent recording the source. This is redistribution, so it is not optional.\n4. A check that the vendored data and the metadata the core actually uses came from the same libphonenumber version, failing loudly if not. The crate is phonenumber 0.3.10+9.0.33, where 9.0.33 is the upstream version — so the check has something concrete to compare against.\n\nDECISION TO RECORD: take the data from the crate's own assets rather than fetching libphonenumber upstream. Upstream is newer, but the core validates numbers against the metadata compiled into the crate. If place data is newer than the number metadata, the geocoder will name prefixes the expander rejects. They must move together.\n\nCONSTRAINTS.\n- Guidelines §1: no country in code. This is data, and vendoring it is the point.\n- Vendoring 11 MB is a deliberate repository cost. Take all languages, so choosing which to ship is a packaging decision (T-next) rather than a re-fetch.\n\nDONE WHEN. The data is in the repo with provenance and attribution, the version check exists and passes, nothing reads from ~/.cargo, and a fresh clone can build and convert without network access.",
+      "descriptionUpdatedAt": "2026-09-10T08:21:39.591Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-001-planned-in-progress",
+          "date": "2026-09-10T08:22:07.932Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-001-geocoding-tree-and-phonenumbermetadata-xml-vendored-under-data-upstream",
+          "number": 1,
+          "title": "Geocoding tree and PhoneNumberMetadata.xml vendored under data/upstream/",
+          "checked": false
+        },
+        {
+          "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-002-provenance-recorded-libphonenumber-release-crate-version-date-refresh-command",
+          "number": 2,
+          "title": "Provenance recorded: libphonenumber release, crate version, date, refresh command",
+          "checked": false
+        },
+        {
+          "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-003-apache-2-0-attribution-kept-and-a-notice-added",
+          "number": 3,
+          "title": "Apache 2.0 attribution kept and a NOTICE added",
+          "checked": false
+        },
+        {
+          "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-004-check-that-vendored-data-and-the-core-s-metadata-share-an-upstream-version",
+          "number": 4,
+          "title": "Check that vendored data and the core's metadata share an upstream version",
+          "checked": false
+        },
+        {
+          "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-005-nothing-reads-from-cargo",
+          "number": 5,
+          "title": "Nothing reads from ~/.cargo",
+          "checked": false
+        },
+        {
+          "id": "6b5d1878-c4fb-4243-8470-197574b9adc9-check-006-fresh-clone-builds-and-converts-with-no-network",
+          "number": 6,
+          "title": "Fresh clone builds and converts with no network",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-10T08:22:07.932Z",
+      "completedAt": "",
+      "createdAt": "2026-09-10T08:21:39.581Z",
+      "updatedAt": "2026-09-10T08:22:07.932Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-10T08:22:07.908Z"
+        }
+      ]
+    },
+    {
+      "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261",
+      "phaseId": "b85eacfe-d3f7-4382-afad-004a97bdadcf",
+      "number": 15,
+      "shortId": "RVYKN",
+      "priority": 2,
+      "shortName": "convert-geocoding-data-into-a",
+      "title": "Convert geocoding data into a compact versioned dataset",
+      "status": "planned",
+      "description": "DEPENDS ON P006(F003)/T014 for the vendored source.\n\nGOAL. A build tool that turns the vendored text into a compact binary dataset the core reads directly, plus the validation that stops a broken one shipping.\n\nWHY NOT SHIP THE TEXT. 6.6 MB for English alone, 269,380 lines to scan for one lookup. The measured shape says what the format should be: 269,380 prefix entries but only 38,116 distinct place names, so names belong in a deduplicated string table and entries become (prefix, name index). Sorted prefixes give longest-match by binary search — at most fifteen probes, since that is the longest an E.164 number gets.\n\nWHERE THIS RUNS, and it is not where the phase assumed. The phase says the format must survive an iOS extension's memory limit. The geocoder does not run there: the Call Directory extension receives a finished list of numbers, and place names are an app-side concern — turning a place into a prefix when a rule is written, and showing a place for a number in the UI. Design for a phone app, not for the extension. Say so in the code, because the phase description currently implies otherwise.\n\nWHAT TO BUILD:\n1. A converter, as a tool alongside the existing ones in tools/ or a cargo bin. Input: the vendored tree. Output: one dataset file per language.\n2. A container that is SELF-DESCRIBING AND VERSIONED, and describes \"a versioned dataset\" rather than \"geocoding\" — R1's spam list and R7's UI strings ride the same format later, and R5 requires the engine to run against a dataset it was not compiled against. A magic number, a format version, the upstream data version, the language, and a table of contents.\n3. Selective packaging: choose which languages and countries go into a build. English is the only near-complete one, so a sensible default is English plus whatever the user's language covers. Do not bake the choice into code.\n4. VALIDATION THAT FAILS THE BUILD. Every country in the source appears in the output; counts match; prefixes are sorted, unique and parse as digits; every name index resolves. A silently truncated dataset makes rules stop matching with no error anywhere, which the phase calls out as close to undebuggable. CI has a note reserved for exactly this step.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code. Enumerate from the data.\n- Do not assume a fixed shape: coverage per language is wildly uneven (English 151 countries, Italian 2), so absent countries are normal, not an error.\n- Reproducible: the same input must produce a byte-identical output, or the version check in T014 means nothing.\n\nEDGE CASES to test: a language covering two countries; a country whose file is only a licence header; duplicate prefixes within a file; a place name containing the delimiter; non-ASCII names, which most of the non-English data is; the longest prefix in the data; an empty language directory.\n\nDONE WHEN. The converter produces a dataset for every vendored language, validation catches a deliberately truncated input, output is byte-reproducible, and cargo test / fmt / clippy -D warnings / the §1 lint pass.",
+      "descriptionUpdatedAt": "2026-09-10T08:22:01.575Z",
+      "notes": "",
+      "statusLog": [],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-001-converter-tool-reading-the-vendored-tree",
+          "number": 1,
+          "title": "Converter tool reading the vendored tree",
+          "checked": false
+        },
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-002-deduplicated-string-table-plus-sorted-prefix-name-index-entries",
+          "number": 2,
+          "title": "Deduplicated string table plus sorted (prefix, name index) entries",
+          "checked": false
+        },
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-003-self-describing-versioned-container-general-across-dataset-kinds",
+          "number": 3,
+          "title": "Self-describing versioned container, general across dataset kinds",
+          "checked": false
+        },
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-004-selective-packaging-by-language-and-country-not-baked-into-code",
+          "number": 4,
+          "title": "Selective packaging by language and country, not baked into code",
+          "checked": false
+        },
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-005-validation-that-fails-the-build-on-a-truncated-or-inconsistent-dataset",
+          "number": 5,
+          "title": "Validation that fails the build on a truncated or inconsistent dataset",
+          "checked": false
+        },
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-006-byte-reproducible-output",
+          "number": 6,
+          "title": "Byte-reproducible output",
+          "checked": false
+        },
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-007-documented-that-the-geocoder-is-app-side-not-extension-side",
+          "number": 7,
+          "title": "Documented that the geocoder is app-side, not extension-side",
+          "checked": false
+        },
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-008-edge-cases-sparse-language-header-only-file-duplicate-prefix-delimiter-in-name-non-ascii-longest-prefix-empty-directory",
+          "number": 8,
+          "title": "Edge cases: sparse language, header-only file, duplicate prefix, delimiter in name, non-ASCII, longest prefix, empty directory",
+          "checked": false
+        },
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-009-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
+          "number": 9,
+          "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "",
+      "completedAt": "",
+      "createdAt": "2026-09-10T08:22:01.563Z",
+      "updatedAt": "2026-09-10T08:22:01.563Z",
+      "sessionInfo": []
+    }
+  ],
   "createdAt": "2026-09-08T08:30:38.289Z",
-  "updatedAt": "2026-09-08T08:30:38.289Z",
+  "updatedAt": "2026-09-10T08:22:07.932Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
   "handoffReadAt": "",
   "handoffHistory": [],
-  "statusLog": [],
-  "sessionInfo": []
+  "statusLog": [
+    {
+      "id": "f1569211-cc81-4b8c-8a72-db92002924ea",
+      "date": "2026-09-10T08:22:07.937Z",
+      "fromStatus": "draft",
+      "toStatus": "in-progress",
+      "title": "draft → in-progress",
+      "description": ""
+    }
+  ],
+  "sessionInfo": [
+    {
+      "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+      "createdAt": "2026-09-10T08:22:07.908Z"
+    }
+  ]
 }
