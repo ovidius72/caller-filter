@@ -120,9 +120,9 @@
       "priority": 2,
       "shortName": "convert-geocoding-data-into-a",
       "title": "Convert geocoding data into a compact versioned dataset",
-      "status": "in-progress",
-      "description": "DEPENDS ON P006(F003)/T014 for the vendored source.\n\nGOAL. A build tool that turns the vendored text into a compact binary dataset the core reads directly, plus the validation that stops a broken one shipping.\n\nWHY NOT SHIP THE TEXT. 6.6 MB for English alone, 269,380 lines to scan for one lookup. The measured shape says what the format should be: 269,380 prefix entries but only 38,116 distinct place names, so names belong in a deduplicated string table and entries become (prefix, name index). Sorted prefixes give longest-match by binary search — at most fifteen probes, since that is the longest an E.164 number gets.\n\nWHERE THIS RUNS, and it is not where the phase assumed. The phase says the format must survive an iOS extension's memory limit. The geocoder does not run there: the Call Directory extension receives a finished list of numbers, and place names are an app-side concern — turning a place into a prefix when a rule is written, and showing a place for a number in the UI. Design for a phone app, not for the extension. Say so in the code, because the phase description currently implies otherwise.\n\nWHAT TO BUILD:\n1. A converter, as a tool alongside the existing ones in tools/ or a cargo bin. Input: the vendored tree. Output: one dataset file per language.\n2. A container that is SELF-DESCRIBING AND VERSIONED, and describes \"a versioned dataset\" rather than \"geocoding\" — R1's spam list and R7's UI strings ride the same format later, and R5 requires the engine to run against a dataset it was not compiled against. A magic number, a format version, the upstream data version, the language, and a table of contents.\n3. Selective packaging: choose which languages and countries go into a build. English is the only near-complete one, so a sensible default is English plus whatever the user's language covers. Do not bake the choice into code.\n4. VALIDATION THAT FAILS THE BUILD. Every country in the source appears in the output; counts match; prefixes are sorted, unique and parse as digits; every name index resolves. A silently truncated dataset makes rules stop matching with no error anywhere, which the phase calls out as close to undebuggable. CI has a note reserved for exactly this step.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code. Enumerate from the data.\n- Do not assume a fixed shape: coverage per language is wildly uneven (English 151 countries, Italian 2), so absent countries are normal, not an error.\n- Reproducible: the same input must produce a byte-identical output, or the version check in T014 means nothing.\n\nEDGE CASES to test: a language covering two countries; a country whose file is only a licence header; duplicate prefixes within a file; a place name containing the delimiter; non-ASCII names, which most of the non-English data is; the longest prefix in the data; an empty language directory.\n\nDONE WHEN. The converter produces a dataset for every vendored language, validation catches a deliberately truncated input, output is byte-reproducible, and cargo test / fmt / clippy -D warnings / the §1 lint pass.",
-      "descriptionUpdatedAt": "2026-09-10T08:22:01.575Z",
+      "status": "done",
+      "description": "DEPENDS ON P006(F003)/T014 for the vendored source.\n\nGOAL. A build tool that turns the vendored text into a compact binary dataset the core reads directly, plus the validation that stops a broken one shipping.\n\nWHY NOT SHIP THE TEXT. 6.6 MB for English alone, 269,380 lines to scan for one lookup. The measured shape says what the format should be: 269,380 prefix entries but only 38,116 distinct place names, so names belong in a deduplicated string table and entries become (prefix, name index). Sorted prefixes give longest-match by binary search — at most fifteen probes, since that is the longest an E.164 number gets.\n\nWHERE THIS RUNS, and it is not where the phase assumed. The phase says the format must survive an iOS extension's memory limit. The geocoder does not run there: the Call Directory extension receives a finished list of numbers, and place names are an app-side concern — turning a place into a prefix when a rule is written, and showing a place for a number in the UI. Design for a phone app, not for the extension. Say so in the code, because the phase description currently implies otherwise.\n\nWHAT TO BUILD:\n1. A converter, as a tool alongside the existing ones in tools/ or a cargo bin. Input: the vendored tree. Output: one dataset file per language.\n2. A container that is SELF-DESCRIBING AND VERSIONED, and describes \"a versioned dataset\" rather than \"geocoding\" — R1's spam list and R7's UI strings ride the same format later, and R5 requires the engine to run against a dataset it was not compiled against. A magic number, a format version, the upstream data version, the language, and a table of contents.\n3. Selective packaging: choose which languages and countries go into a build. English is the only near-complete one, so a sensible default is English plus whatever the user's language covers. Do not bake the choice into code.\n4. VALIDATION THAT FAILS THE BUILD. Every country in the source appears in the output; counts match; prefixes are sorted, unique and parse as digits; every name index resolves. A silently truncated dataset makes rules stop matching with no error anywhere, which the phase calls out as close to undebuggable. CI has a note reserved for exactly this step.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or place name in code. Enumerate from the data.\n- Do not assume a fixed shape: coverage per language is wildly uneven (English 151 countries, Italian 2), so absent countries are normal, not an error.\n- Reproducible: the same input must produce a byte-identical output, or the version check in T014 means nothing.\n\nEDGE CASES to test: a language covering two countries; a country whose file is only a licence header; duplicate prefixes within a file; a place name containing the delimiter; non-ASCII names, which most of the non-English data is; the longest prefix in the data; an empty language directory.\n\nDONE WHEN. The converter produces a dataset for every vendored language, validation catches a deliberately truncated input, output is byte-reproducible, and cargo test / fmt / clippy -D warnings / the §1 lint pass.\n\n---\n**Completion summary:**\nSHIPPED. Commit 2a7dc66. One checklist item left open — see below.\n\ncore/src/dataset.rs (new): the container format, Builder and Dataset reader, in the core so the layout has one definition and the converter cannot drift from it. core/tests/dataset.rs (new, 4 tests). datasets/ (new workspace crate): lib plus a build-datasets binary, datasets/tests/convert.rs (14 tests). CI runs the converter. Cargo.toml gains the workspace member.\n\nRESULT. English: 269,380 prefixes, 38,116 names, 151 countries, 6.6 MB of text into 2,845,450 bytes — 57% smaller, with a binary search per lookup instead of a linear scan. All 34 languages build.\n\nTHE SHAPE CAME FROM THE DATA, measured before writing anything: 269,380 entries share only 38,116 distinct names, so names are a deduplicated table and entries hold an index; the longest prefix anywhere is 9 digits, so a prefix is a u32 rather than a u64; entries arrive sorted with no duplicates. Grouping by prefix length and sorting within a group is what makes longest-match a few binary searches from the longest group downwards.\n\nAlso probed before writing, and each turned into a test: no name anywhere contains the delimiter (so splitting once and keeping the rest is not theoretical); no file is header-only; no duplicate prefixes; no empty language directories; non-ASCII is the norm outside English.\n\nDECISION — a versioned dataset, not a geocoding file. Magic, format version, kind, language, and the libphonenumber release it was built from. R5 needs data to update without an app release, R7 ships language files the same way, and R1's spam list rides the same pipe later. Carrying the upstream release means a reader can tell whether place names and number metadata agree.\n\nDECISION — the format lives in the core, next to its reader, rather than in the converter. Two implementations of a binary layout is the classic way to ship a file one side cannot read.\n\nVALIDATION, and it was verified to fail rather than only to pass. Every dataset is read back before being accepted: every prefix from the source must resolve to the same name, and the reader independently rejects bad magic, an unknown format version, truncation at any offset, a dangling name index, and out-of-order entries. Proved by appending a malformed line to a real vendored file — the build stopped and named the file and line. Now a CI step, which the workflow had a note reserved for; that note is updated rather than left stale.\n\nREPRODUCIBILITY checked on the real English dataset, not only on fixtures: two runs, identical SHA-256. Entries are held in a BTreeMap and files are sorted before reading, so neither insertion order nor filesystem enumeration order can leak into the output. This matters because the vendored-data check compares version strings, not contents — without reproducibility two people could ship different datasets from the same source and nothing would notice.\n\nCHECKLIST ITEM LEFT OPEN — C4, \"selective packaging by language AND country\". Language selection works: `build-datasets en it` builds those two. Country selection is NOT implemented; every country in a language is always included. It matters for bundle size, since English alone is 2.8 MB, and it is the obvious next lever. Left open rather than ticked.\n\nCORRECTS THE PHASE DESCRIPTION. P006 says the format must survive an iOS extension's memory limit. It does not run there: the Call Directory extension is handed a finished list of numbers and never looks a place up. Place names are for writing a rule and for showing what a number is, both app-side. Recorded in the module documentation so the next reader does not design around a constraint that does not apply.\n\nVERIFIED. cargo test --all: 119 pass, 1 ignored, 0 fail. cargo fmt --all --check clean. cargo clippy --all-targets -D warnings clean. Both lints pass. UniFFI bindings still generate. Output is gitignored via the existing /datasets/build/ rule, which the repository had already anticipated.\n\nNOT DONE HERE. PhoneNumberMetadata.xml is not converted — the core still reads number metadata compiled into the phonenumber crate, so R5's \"run against a dataset it was not compiled against\" is unmet for numbers, though the container is ready for it. Nothing loads a dataset at runtime yet; that is P004(F002), the geocoder, which this unblocks. No compression: 2.8 MB is the packed size, and the entry table would shrink further under delta encoding if bundle size demands it.",
+      "descriptionUpdatedAt": "2026-09-10T14:32:15.982Z",
       "notes": "",
       "statusLog": [
         {
@@ -132,6 +132,14 @@
           "toStatus": "in-progress",
           "title": "planned → in-progress",
           "description": ""
+        },
+        {
+          "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-002-in-progress-done",
+          "date": "2026-09-10T14:32:15.981Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "SHIPPED. Commit 2a7dc66. One checklist item left open — see below.\n\ncore/src/dataset.rs (new): the container format, Builder and Dataset reader, in the core so the layout has one definition and the converter cannot drift from it. core/tests/dataset.rs (new, 4 tests). datasets/ (new workspace crate): lib plus a build-datasets binary, datasets/tests/convert.rs (14 tests). CI runs the converter. Cargo.toml gains the workspace member.\n\nRESULT. English: 269,380 prefixes, 38,116 names, 151 countries, 6.6 MB of text into 2,845,450 bytes — 57% smaller, with a binary search per lookup instead of a linear scan. All 34 languages build.\n\nTHE SHAPE CAME FROM THE DATA, measured before writing anything: 269,380 entries share only 38,116 distinct names, so names are a deduplicated table and entries hold an index; the longest prefix anywhere is 9 digits, so a prefix is a u32 rather than a u64; entries arrive sorted with no duplicates. Grouping by prefix length and sorting within a group is what makes longest-match a few binary searches from the longest group downwards.\n\nAlso probed before writing, and each turned into a test: no name anywhere contains the delimiter (so splitting once and keeping the rest is not theoretical); no file is header-only; no duplicate prefixes; no empty language directories; non-ASCII is the norm outside English.\n\nDECISION — a versioned dataset, not a geocoding file. Magic, format version, kind, language, and the libphonenumber release it was built from. R5 needs data to update without an app release, R7 ships language files the same way, and R1's spam list rides the same pipe later. Carrying the upstream release means a reader can tell whether place names and number metadata agree.\n\nDECISION — the format lives in the core, next to its reader, rather than in the converter. Two implementations of a binary layout is the classic way to ship a file one side cannot read.\n\nVALIDATION, and it was verified to fail rather than only to pass. Every dataset is read back before being accepted: every prefix from the source must resolve to the same name, and the reader independently rejects bad magic, an unknown format version, truncation at any offset, a dangling name index, and out-of-order entries. Proved by appending a malformed line to a real vendored file — the build stopped and named the file and line. Now a CI step, which the workflow had a note reserved for; that note is updated rather than left stale.\n\nREPRODUCIBILITY checked on the real English dataset, not only on fixtures: two runs, identical SHA-256. Entries are held in a BTreeMap and files are sorted before reading, so neither insertion order nor filesystem enumeration order can leak into the output. This matters because the vendored-data check compares version strings, not contents — without reproducibility two people could ship different datasets from the same source and nothing would notice.\n\nCHECKLIST ITEM LEFT OPEN — C4, \"selective packaging by language AND country\". Language selection works: `build-datasets en it` builds those two. Country selection is NOT implemented; every country in a language is always included. It matters for bundle size, since English alone is 2.8 MB, and it is the obvious next lever. Left open rather than ticked.\n\nCORRECTS THE PHASE DESCRIPTION. P006 says the format must survive an iOS extension's memory limit. It does not run there: the Call Directory extension is handed a finished list of numbers and never looks a place up. Place names are for writing a rule and for showing what a number is, both app-side. Recorded in the module documentation so the next reader does not design around a constraint that does not apply.\n\nVERIFIED. cargo test --all: 119 pass, 1 ignored, 0 fail. cargo fmt --all --check clean. cargo clippy --all-targets -D warnings clean. Both lints pass. UniFFI bindings still generate. Output is gitignored via the existing /datasets/build/ rule, which the repository had already anticipated.\n\nNOT DONE HERE. PhoneNumberMetadata.xml is not converted — the core still reads number metadata compiled into the phonenumber crate, so R5's \"run against a dataset it was not compiled against\" is unmet for numbers, though the container is ready for it. Nothing loads a dataset at runtime yet; that is P004(F002), the geocoder, which this unblocks. No compression: 2.8 MB is the packed size, and the entry table would shrink further under delta encoding if bundle size demands it."
         }
       ],
       "decisions": [],
@@ -141,19 +149,19 @@
           "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-001-converter-tool-reading-the-vendored-tree",
           "number": 1,
           "title": "Converter tool reading the vendored tree",
-          "checked": false
+          "checked": true
         },
         {
           "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-002-deduplicated-string-table-plus-sorted-prefix-name-index-entries",
           "number": 2,
           "title": "Deduplicated string table plus sorted (prefix, name index) entries",
-          "checked": false
+          "checked": true
         },
         {
           "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-003-self-describing-versioned-container-general-across-dataset-kinds",
           "number": 3,
           "title": "Self-describing versioned container, general across dataset kinds",
-          "checked": false
+          "checked": true
         },
         {
           "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-004-selective-packaging-by-language-and-country-not-baked-into-code",
@@ -165,31 +173,31 @@
           "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-005-validation-that-fails-the-build-on-a-truncated-or-inconsistent-dataset",
           "number": 5,
           "title": "Validation that fails the build on a truncated or inconsistent dataset",
-          "checked": false
+          "checked": true
         },
         {
           "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-006-byte-reproducible-output",
           "number": 6,
           "title": "Byte-reproducible output",
-          "checked": false
+          "checked": true
         },
         {
           "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-007-documented-that-the-geocoder-is-app-side-not-extension-side",
           "number": 7,
           "title": "Documented that the geocoder is app-side, not extension-side",
-          "checked": false
+          "checked": true
         },
         {
           "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-008-edge-cases-sparse-language-header-only-file-duplicate-prefix-delimiter-in-name-non-ascii-longest-prefix-empty-directory",
           "number": 8,
           "title": "Edge cases: sparse language, header-only file, duplicate prefix, delimiter in name, non-ASCII, longest prefix, empty directory",
-          "checked": false
+          "checked": true
         },
         {
           "id": "b4087744-33ad-4b37-8c13-13d3e4bb2261-check-009-cargo-test-fmt-clippy-d-warnings-no-hardcoded-numbering-lint",
           "number": 9,
           "title": "cargo test, fmt, clippy -D warnings, no-hardcoded-numbering lint",
-          "checked": false
+          "checked": true
         }
       ],
       "subtasks": [],
@@ -197,9 +205,9 @@
       "pauseSnapshot": null,
       "pauseHistory": [],
       "startedAt": "2026-09-10T14:26:06.848Z",
-      "completedAt": "",
+      "completedAt": "2026-09-10T14:32:15.981Z",
       "createdAt": "2026-09-10T08:22:01.563Z",
-      "updatedAt": "2026-09-10T14:26:06.848Z",
+      "updatedAt": "2026-09-10T14:32:15.981Z",
       "sessionInfo": [
         {
           "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
@@ -209,7 +217,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:38.289Z",
-  "updatedAt": "2026-09-10T14:26:06.848Z",
+  "updatedAt": "2026-09-10T14:32:15.981Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -222,6 +230,14 @@
       "fromStatus": "draft",
       "toStatus": "in-progress",
       "title": "draft → in-progress",
+      "description": ""
+    },
+    {
+      "id": "9a6f5eda-3977-4586-ab6f-9610938d3a06",
+      "date": "2026-09-10T14:32:15.992Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
       "description": ""
     }
   ],
