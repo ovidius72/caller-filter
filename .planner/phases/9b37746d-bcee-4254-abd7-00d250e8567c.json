@@ -250,11 +250,20 @@
       "priority": 3,
       "shortName": "explain-rule-expansion-size-an",
       "title": "explain(rule): expansion size and per-platform verdict",
-      "status": "planned",
+      "status": "in-progress",
       "description": "DEPENDS ON P003(F002)/T010 for the expansion count.\n\nWHY THIS EXISTS. R2's honesty requirement: show each rule's computed expansion size and per-platform verdict from real data, and never silently drop, narrow or partially apply a rule. This is the function that makes that possible, and it is what R8's UI reads. Without it the app either lies by omission or the user discovers a rule does nothing when a call gets through.\n\nGOAL. explain(rule, database, limits) -> Explanation, in core/src/explain.rs (new).\n\nTHE VERDICTS DIFFER BY PLATFORM, and each is a fact already verified in F001 — read F001's description for the evidence rather than re-deriving:\n- Android calls: every rule type evaluates live. No expansion, no limit, always applies. The exception is a withheld caller, which never reaches a screening service at all — no rule can ever act on one, and users will expect otherwise.\n- iOS SMS: every rule type evaluates live. Verdict caps at the Junk folder, not deletion, and only for unknown senders.\n- iOS calls: pre-expanded only. A rule fits, or it is too broad, or it cannot be expressed at all. A CallerId rule cannot apply. An EndsWith rule will almost always be too broad. An allow rule with no enclosing deny is a no-op, and the UI must not imply otherwise.\n- Android SMS: out of scope entirely (R2, decided 2026-09-08) — blocking there means becoming the default SMS app.\n\nWHAT TO BUILD. An Explanation carrying, per rule: the expansion count where one applies, and a per-surface verdict that distinguishes at least: applies live; fits within the budget; too broad for this platform; cannot be expressed on this platform; and no effect. Those are distinct user-facing situations and collapsing them loses the honesty R2 asks for.\n\nCONSTRAINTS.\n- Guidelines §1: no country, prefix or length in code; no platform's limit written as a literal.\n- Guidelines §4: the entry budget is injected configuration from F001's measurement, never a constant.\n- Guidelines §5 and R8: the user sees plain language, never an entry count presented as a setting. This function returns facts; wording is the shell's job. Do not put user-facing English in the core — R7 makes UI text a data file, not code.\n- The surfaces themselves must be data-driven enough that adding one (HarmonyOS is explicitly contemplated in F002) does not mean rewriting this.\n\nEDGE CASES to test: a rule that fits on iOS and applies live on Android; one too broad for iOS but fine on Android; a CallerId rule, which is live on Android and inexpressible on iOS calls; an allow with no enclosing deny; a rule whose country descriptor for that type is absent; a rule whose expansion is exactly at the limit.\n\nDONE WHEN. Every verdict above is produced from real metadata, no user-facing wording lives in the core, the budget is injected, and cargo test / fmt / clippy -D warnings / tools/check-no-hardcoded-numbering.sh pass. Fixtures in core/tests/.",
       "descriptionUpdatedAt": "2026-09-10T06:20:03.082Z",
       "notes": "",
-      "statusLog": [],
+      "statusLog": [
+        {
+          "id": "2647e99d-31e0-49c8-8060-5d7f77eda4f7-check-001-planned-in-progress",
+          "date": "2026-09-10T07:56:45.208Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
       "decisions": [],
       "acceptedDecisions": [],
       "checklist": [
@@ -317,11 +326,16 @@
       "dependsOn": [],
       "pauseSnapshot": null,
       "pauseHistory": [],
-      "startedAt": "",
+      "startedAt": "2026-09-10T07:56:45.208Z",
       "completedAt": "",
       "createdAt": "2026-09-10T06:20:03.064Z",
-      "updatedAt": "2026-09-10T06:20:03.064Z",
-      "sessionInfo": []
+      "updatedAt": "2026-09-10T07:56:45.208Z",
+      "sessionInfo": [
+        {
+          "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
+          "createdAt": "2026-09-10T07:56:45.178Z"
+        }
+      ]
     },
     {
       "id": "ef0257c5-59a4-471d-96ce-57a25bfb5cd1",
@@ -497,7 +511,7 @@
     }
   ],
   "createdAt": "2026-09-08T08:30:03.596Z",
-  "updatedAt": "2026-09-10T07:53:15.838Z",
+  "updatedAt": "2026-09-10T07:56:45.208Z",
   "handoff": "",
   "handoffUpdatedAt": "",
   "handoffAudit": null,
@@ -516,7 +530,7 @@
   "sessionInfo": [
     {
       "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
-      "createdAt": "2026-09-10T07:42:03.878Z"
+      "createdAt": "2026-09-10T07:56:45.178Z"
     }
   ]
 }

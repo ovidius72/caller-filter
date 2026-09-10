@@ -20,6 +20,7 @@ uniffi::setup_scaffolding!();
 
 pub mod evaluate;
 pub mod expand;
+pub mod explain;
 pub mod normalize;
 pub mod rule;
 
@@ -27,6 +28,7 @@ pub use evaluate::{evaluate, Call, Verdict, E164};
 pub use expand::{
     expand_matcher, expand_rules, expand_rules_to_vec, BlockList, Budget, Expansion, NotExpandable,
 };
+pub use explain::{explain, Explanation, Surface, Verdict as PlatformVerdict};
 pub use normalize::{normalize, NormalizeError, Normalized};
 pub use rule::{
     Authored, Conflict, Digits, Effect, LocationRef, Matcher, Pattern, PrefixSource, Rule,
