@@ -1,0 +1,203 @@
+{
+  "id": "05939f14-382c-488f-8dac-dc80f79f760f",
+  "featureId": "c2200077-ec99-4c5b-8bd8-cc9e8d8e4834",
+  "number": 17,
+  "shortId": "SDFRG",
+  "priority": 3,
+  "slug": "verify-silent-blocking-on-physical-android-and-iphone-devices",
+  "title": "Verify silent blocking on physical Android and iPhone devices",
+  "discussedAt": "2026-09-14T18:37:59.404Z",
+  "contextReady": true,
+  "contextReadyReason": "Updated through phase_discuss tool.",
+  "summary": "Run controlled real calls on both platforms and report whether silent blocking is actually supported before proceeding.",
+  "description": "CURRENT STATE: no real-device evidence yet establishes the no-disturbance requirement. P001/T001 measured entry capacity and P001/T002 inspected SDK contracts. Both remain completed historical work. This phase uses the probes/protocol prepared by P014/T019–T021. Runtime references are tools/entry-limit-harness/CallDir/CallDirectoryHandler.swift:20 and App/App.swift:42 on iOS; Android uses the ScreeningService.kt adapter planned by T021 beside MainActivity.kt:9, core/src/ffi.rs:309 and tools/build-android.sh:30. Production apps remain incomplete.\n\nTASK OWNERSHIP: T022 verifies a physical Android phone; T023 verifies a physical iPhone. Each depends on both probe tasks, and transitively the protocol. Neither can begin before preparation is done and the user connects/authorizes the devices. There is no dependency between the two physical tasks; handset availability may change execution order. The task finishing second must consolidate the two platform verdicts before the phase is considered ready for user review.\n\nPROTOCOL: record actual handset, OS, carrier, artifact/build, fixture alias, role/extension state and observation window. Establish a permitted call that visibly rings with Focus/silent mode, other blockers and native block lists controlled. Test the consented exact numbered caller with screen locked/unlocked and the app backgrounded/not visibly open. Verify block removal and return of normal calling. No ringtone, vibration, incoming UI or blocked/missed-call notification is acceptable; a call-record entry is acceptable. Observe delayed SMS/other alerts separately and classify their origin only where evidenced. A residual external disturbance requires an explicit conditional/failing result, not a clean full-silence claim; ask before changing carrier/system services.\n\nPLATFORM FACTS: Android must actually invoke the screening service and receive its response within the SDK deadline; baseline callers are outside contacts with visible numbers. Notification suppression is distinct from silencing the ringtone; call-log suppression is not a reliable third-party control and is not required. iOS receives a preloaded exact-number list, gives no per-call callback/history API and offers no separate skip-notification switch. Successful loading is not evidence of silent real calls; observe the handset directly.\n\nEVIDENCE AND STOP: persist redacted per-case pass/fail/blocked/not-tested results and cleanup/recovery evidence. Hardware absence or inconclusive cases are not passes. Report only the tested device/OS/carrier configurations. Do not add voicemail settings, SMS filtering, capacity stress tests or unrelated permissions/features. A completed investigation can report a failure, but must not mark the product requirement verified. Summarize both results and stop for the user's go/no-go before further app/core implementation; later production integration must repeat the tests.",
+  "descriptionUpdatedAt": "2026-09-14T18:39:25.708Z",
+  "notes": "",
+  "goals": [
+    "Measure whether blocked real calls cause any ringtone, vibration, incoming UI or blocked/missed-call notification on each physical platform.",
+    "Distinguish app/system behavior from delayed carrier SMS without assuming the latter can be controlled by the app.",
+    "Give the user a bounded cross-platform verdict and stop before further product implementation."
+  ],
+  "nonGoals": [
+    "Guaranteeing behavior on untested device/OS/carrier combinations.",
+    "Treating records in the call log as a failure.",
+    "Silencing the whole phone, changing carrier services without permission, building voicemail settings, or disguising residual alerts with unrelated features.",
+    "Replacing later production-integration regression tests with probe evidence."
+  ],
+  "dependencies": [
+    "All P014 preparation tasks (T019–T021) completed; enforced through task dependencies.",
+    "User-provided physical phones, approved installation/role/extension setup and consented real calling session."
+  ],
+  "dependsOn": [],
+  "risks": [
+    "Physical phones may not yet be connected or authorized; this is waiting for user input, not a successful test.",
+    "The iPhone gives no per-call callback; a loaded block list cannot establish observed behavior.",
+    "Android screening exclusions or role loss may prevent the service from seeing a test call.",
+    "An OS or carrier may still create delayed alerts; report failure/conditional coverage and seek the user's decision instead of weakening acceptance."
+  ],
+  "openQuestions": [
+    "Actual observed silent-blocking results on each handset/OS/carrier remain unknown.",
+    "Whether any carrier-generated missed-call message follows the block, and whether changing a carrier service would be required, remains unverified."
+  ],
+  "decisions": [],
+  "acceptedDecisions": [],
+  "completionCriteria": [
+    "T022 and T023 contain executed real-call evidence or explicit blocked/untested cases, with handset/OS/carrier/build identified.",
+    "Allowed-call controls ring before and after the block; screen/app-state cases and delayed-observation windows are recorded.",
+    "App/system alerts, permitted call records and carrier messages are reported separately; residual disturbance is not labeled a clean pass.",
+    "The platform verdicts and unresolved blockers are summarized for the user; any failure prevents declaring the no-disturbance requirement verified. Stop for user instructions before further implementation."
+  ],
+  "taskIds": [
+    "46100a71-e13a-4f40-8ba4-6a00d2a4601e",
+    "7a571918-7e8a-4861-a4db-e774db23bb8f"
+  ],
+  "tasks": [
+    {
+      "id": "46100a71-e13a-4f40-8ba4-6a00d2a4601e",
+      "phaseId": "05939f14-382c-488f-8dac-dc80f79f760f",
+      "number": 22,
+      "shortId": "C4YAQ",
+      "priority": 1,
+      "shortName": "verify-no-disturbance-blocking",
+      "title": "Verify no-disturbance blocking on a physical Android phone",
+      "status": "planned",
+      "description": "PHYSICAL EXECUTION ONLY AFTER PREPARATION: complete P014/T019, T020 and T021, then wait for the user to connect the phones and approve live calls. Read the protocol/result template produced under tools/device-tests/ and the exact Android probe/build instructions. Runtime references: apps/android/app/src/main/java/com/antoniopantano/callerfilter/MainActivity.kt:9, the ScreeningService.kt adapter created by T021, core/src/ffi.rs:309 and tools/build-android.sh:30. No Android device result exists yet.\n\nRUN: identify the chosen handset, OS version, carrier, APK/build and fixture alias. Install with explicit device selection; obtain role approval from the user and verify ROLE_CALL_SCREENING. Keep the caller number presented and outside contacts. Record baseline ringtone/vibration/Focus settings, native block lists, other screening apps and relevant carrier services. First prove a permitted call rings. Then execute the protocol's exact blocked-number cases with locked/unlocked screen and the app backgrounded/not visibly open. Capture service invocation, core verdict and response timing alongside human observation; a log saying Block is not proof that the phone was undisturbed.\n\nACCEPTANCE: no ringtone, vibration, incoming UI, or blocked/missed-call notification. Logs/Recents entries are allowed; do not fail on them or rely on third-party suppression of the system call log. Observe the agreed window for delayed notifications/SMS. Record sender/time/content category with personal information redacted and separate carrier-generated effects from app/system behavior. A carrier-side disturbance is not silently excused as a full no-disturbance pass; ask the user before changing services and report any conditional result explicitly. Voicemail settings and Android SMS filtering remain out of scope.\n\nCONTROL AND EVIDENCE: clear the test rule and verify the same number can ring again; record permission/role-loss behavior without using it to fake successful blocking. Record every planned case as pass/fail/blocked/not-tested, actual parameters and evidence paths. Missing hardware, denied permissions or inconclusive observations are not a pass. Preserve existing user data/settings and restore test-specific changes with the user's agreement. Publish bounded conclusions for the tested handset/OS/carrier only, with concrete remaining risks. These are platform probes; production integration must repeat the tests. Do not proceed to unrelated app/core work on completion.",
+      "descriptionUpdatedAt": "2026-09-14T18:36:49.986Z",
+      "notes": "",
+      "statusLog": [],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "46100a71-e13a-4f40-8ba4-6a00d2a4601e-check-001-record-the-physical-handset-os-carrier-build-obtain-installation-role-approval-and-verify-a-ringing-positive-control",
+          "number": 1,
+          "title": "Record the physical handset/OS/carrier/build, obtain installation/role approval and verify a ringing positive control.",
+          "checked": false
+        },
+        {
+          "id": "46100a71-e13a-4f40-8ba4-6a00d2a4601e-check-002-run-the-blocked-call-matrix-and-correlate-visible-behavior-with-service-verdict-timing-evidence",
+          "number": 2,
+          "title": "Run the blocked-call matrix and correlate visible behavior with service/verdict/timing evidence.",
+          "checked": false
+        },
+        {
+          "id": "46100a71-e13a-4f40-8ba4-6a00d2a4601e-check-003-observe-delayed-app-system-carrier-alerts-and-document-any-residual-disturbance-or-untested-case",
+          "number": 3,
+          "title": "Observe delayed app/system/carrier alerts and document any residual disturbance or untested case.",
+          "checked": false
+        },
+        {
+          "id": "46100a71-e13a-4f40-8ba4-6a00d2a4601e-check-004-clear-the-test-rule-prove-normal-calling-returns-and-persist-a-redacted-verdict-with-evidence-and-cleanup-notes",
+          "number": 4,
+          "title": "Clear the test rule, prove normal calling returns, and persist a redacted verdict with evidence and cleanup notes.",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [
+        "61856e2d-306c-486c-bc54-32ca797719f4",
+        "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2"
+      ],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "",
+      "completedAt": "",
+      "createdAt": "2026-09-14T18:36:49.984Z",
+      "updatedAt": "2026-09-14T18:38:17.311Z",
+      "sessionInfo": [],
+      "activeOwnerSession": ""
+    },
+    {
+      "id": "7a571918-7e8a-4861-a4db-e774db23bb8f",
+      "phaseId": "05939f14-382c-488f-8dac-dc80f79f760f",
+      "number": 23,
+      "shortId": "76RZD",
+      "priority": 2,
+      "shortName": "verify-no-disturbance-blocking",
+      "title": "Verify no-disturbance blocking on a physical iPhone",
+      "status": "in-progress",
+      "description": "PHYSICAL EXECUTION ONLY AFTER PREPARATION: complete P014/T019, T020 and T021, then wait for the user to connect the phones and approve live calls. Use the common protocol/result template under tools/device-tests/ and the prepared iPhone probe. References: tools/entry-limit-harness/CallDir/CallDirectoryHandler.swift:20, App/App.swift:42, run.sh:12 and README.md:1. P001/T001 measured capacity on one iPhone; it did not establish that a real blocked call produces no notification or other disturbance.\n\nRUN: record the actual iPhone model, iOS version, carrier, signed build and fixture alias. Select this device explicitly; have the user complete pairing, trust/Developer Mode and Call Directory enablement as required. Confirm the exact-number fixture was accepted by the extension and record enabled state/reload outcome. Establish that an unblocked control call visibly rings with Focus/silent mode and other blocking/screening features controlled and recorded. Run the exact blocked-number cases with screen locked/unlocked and the app backgrounded/not visibly open.\n\nEVIDENCE LIMIT: Call Directory loads entries in advance and gives the app no per-call callback or call-history API. Do not infer a blocked-call event from extension logs, fabricate a history, or treat successful reload as proof of silence. Observe the actual screen, sound/vibration and notification center during the call and throughout the protocol's delayed-observation window; user-provided recordings/screenshots/notes may supply that evidence.\n\nACCEPTANCE: no ringtone, vibration, incoming-call UI, or blocked/missed-call notification. Recents/call-log entries are acceptable. Record any unsolicited SMS or other delayed alert and its evidenced origin separately. The probe cannot issue a separate skip-notification setting or disable a carrier missed-call service. If an alert remains, report failed/conditional/unverified coverage rather than promising that all iPhones are silent. Ask before any user/carrier setting change; no voicemail-settings feature or SMS-filter workaround is authorized.\n\nCONTROL AND CLOSE: clear the fixture/reload or use the documented empty-list control and prove the same caller can ring again. Redact personal numbers/identifiers in committed evidence, preserve private raw artifacts separately, restore test changes with consent and record every case as pass/fail/blocked/not-tested. At the end of P017 reconcile both platform verdicts and stop for the user's go/no-go decision before further implementation. Completion with evidence does not mean every case passed. Production app integration must repeat the tests.",
+      "descriptionUpdatedAt": "2026-09-14T18:37:12.176Z",
+      "notes": "2026-09-16 — PHYSICAL SETUP AND INITIAL BASELINE ONLY; no blocked-call result yet. User has no Android handset and chose iPhone first. Selected connected iPhone 13/iOS 26.6.2 over USB; Developer Mode enabled. Initial Xcode developer-image failure was explicitly DeviceLocked and resolved after user unlock. User authorized EMPTY signing/installation and separately Apple provisioning creation/renewal. One-time in-memory build-command override supplied -allowProvisioningUpdates; no tracked source/default provisioning policy changed. Empty Release build, fixture copies, strict deep signature, artifact hashes, current matching profiles and selected-device inclusion passed. Empty artifact: target/device-tests/ios/iphone-control-qx4ufk2u/derived/Build/Products/Release-iphoneos/LimitTest.app; build record/log, successful install.log and installed-app.json remain private there. User encountered development-trust prompt, then reported the app opened, Extension=enabled, Ready for manual observation and RELOAD=OK for the empty fixture. Those runtime UI observations are user reports, not a direct log read-back.\n\nINITIAL BASELINE: user confirmed ringing/vibration active and no Full immersion/DND. An Apple Watch is connected and must be included in observation. We instructed a deliberately missed EMPTY control with iPhone unlocked/Settings visible, ordinary Phone call, <=30 seconds, then 60 seconds observation. User reported ringing/vibration also on Apple Watch, followed by a missed-call notification and an SMS. Notification device, SMS sender/source and precise call/window timestamps have not been established; do not label the SMS carrier-origin without evidence. Incoming-call UI and the complete settings matrix were not separately reported. This establishes reported baseline channels, NOT a completed matrix or a silence pass. Keep existing alerts timestamp-separated from subsequent deny attempts; do not delete history.\n\nEXACT PREPARATION: user supplied caller-a, explicitly confirmed +39, and approved private target/device-tests/iphone-physical/caller-a.txt plus exact blocking preparation. File is Git-ignored, in a 0700 directory with 0600 mode; no personal number is stored in planner. Refreshed host Rust core; Swift-generated binding check validated canonical input against runtime numbering metadata, confirmed existing Rust exact deny evaluation and exactly one expansion entry (logs/binary under the private iphone-physical directory). This does not establish reachability/assignment or fix the broader national partial-input gap. Signed exact Release artifact: target/device-tests/ios/caller-a-z7zr8a71/derived/Build/Products/Release-iphoneos/LimitTest.app. Verified both fixtures equal the private input, artifact hashes/signatures and current selected-device profiles. Installation succeeded; independent devicectl app-presence read-back passed. Exact build record/build/install/read-back logs remain private in that run directory. No agent launch, manual extension reload or calls occurred.\n\nNEXT: user opens updated LimitTest and verifies caller-a, Mode exact/Entries 1, enabled and successful manual reload BEFORE any denied-call attempt. Exact-list readiness is currently unverified. Then observe actual blocked calls including the Watch, missed notifications and NEW SMS; baseline SMS must not be confused with later alerts. Carrier, SMS origin, full settings/timing evidence, answered controls, repeated denies across all required screen/app states and empty recovery remain outstanding. Retain the signed empty artifact for recovery. All no-disturbance claims remain unverified; do not complete this task from installation/reload or incomplete baseline evidence.",
+      "statusLog": [
+        {
+          "id": "7a571918-7e8a-4861-a4db-e774db23bb8f-check-001-planned-in-progress",
+          "date": "2026-09-16T14:21:05.246Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "7a571918-7e8a-4861-a4db-e774db23bb8f-check-001-record-the-real-iphone-ios-carrier-build-complete-user-authorized-enablement-and-verify-loading-plus-a-ringing-control",
+          "number": 1,
+          "title": "Record the real iPhone/iOS/carrier/build, complete user-authorized enablement and verify loading plus a ringing control.",
+          "checked": false
+        },
+        {
+          "id": "7a571918-7e8a-4861-a4db-e774db23bb8f-check-002-observe-blocked-calls-in-each-screen-app-state-capture-actual-behavior-rather-than-inferring-it-from-reload-logs",
+          "number": 2,
+          "title": "Observe blocked calls in each screen/app state; capture actual behavior rather than inferring it from reload logs.",
+          "checked": false
+        },
+        {
+          "id": "7a571918-7e8a-4861-a4db-e774db23bb8f-check-003-check-delayed-notifications-sms-and-document-residual-disturbance-external-service-conditions-or-uncertainty",
+          "number": 3,
+          "title": "Check delayed notifications/SMS and document residual disturbance, external-service conditions or uncertainty.",
+          "checked": false
+        },
+        {
+          "id": "7a571918-7e8a-4861-a4db-e774db23bb8f-check-004-clear-the-test-block-confirm-calling-recovery-and-persist-the-iphone-verdict-plus-the-cross-platform-summary-for-the-user-s-decision",
+          "number": 4,
+          "title": "Clear the test block, confirm calling recovery, and persist the iPhone verdict plus the cross-platform summary for the user's decision.",
+          "checked": false
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [
+        "61856e2d-306c-486c-bc54-32ca797719f4",
+        "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2"
+      ],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-16T14:21:05.246Z",
+      "completedAt": "",
+      "createdAt": "2026-09-14T18:37:12.172Z",
+      "updatedAt": "2026-09-17T09:38:56.488Z",
+      "sessionInfo": [
+        {
+          "sessionId": "pi:01a090d0-5a08-727b-af7a-87dad496f0b2",
+          "createdAt": "2026-09-17T13:11:13.812Z"
+        }
+      ],
+      "activeOwnerSession": "pi:01a090d0-5a08-727b-af7a-87dad496f0b2"
+    }
+  ],
+  "createdAt": "2026-09-14T18:34:20.581Z",
+  "updatedAt": "2026-09-17T09:38:56.488Z",
+  "handoff": "# Handoff — before compact\n\nCreated at: 2026-09-16T14:24:40.024Z\nUpdated at: 2026-09-16T14:24:40.024Z\nReason: before compact\n\n## Progress snapshot\n- Features: 3/8 done, 2 active\n- Phases: 9/18 done, 1 active/discovery\n- Tasks: 21/23 done, 1 active\n\n## Current focus\n- Feature: `c2200077-ec99-4c5b-8bd8-cc9e8d8e4834` — Platform verification and measurement (in-progress)\n- Phase: `05939f14-382c-488f-8dac-dc80f79f760f` — Verify silent blocking on physical Android and iPhone devices (in-progress)\n- Task: `7a571918-7e8a-4861-a4db-e774db23bb8f` — Verify no-disturbance blocking on a physical iPhone (in-progress)\n\n## What was being done\nNo additional execution notes were captured.\n\n## Current Task Statuses (phase 05939f14-382c-488f-8dac-dc80f79f760f)\n- 📋 `46100a71-e13a-4f40-8ba4-6a00d2a4601e` — Verify no-disturbance blocking on a physical Android phone (planned)\n- 🚧 `7a571918-7e8a-4861-a4db-e774db23bb8f` — Verify no-disturbance blocking on a physical iPhone (in-progress)\n\n## How to resume\n1. Open task 7a571918-7e8a-4861-a4db-e774db23bb8f (Verify no-disturbance blocking on a physical iPhone).\n2. Run handoff show <ref> (or /planner handoff show <ref>) to read the phase handoff and compare it with the latest planner data.\n3. Confirm whether the current task is already in-progress before doing implementation work.\n4. Continue with the next activity: Resume task 7a571918-7e8a-4861-a4db-e774db23bb8f — Verify no-disturbance blocking on a physical iPhone.\n\n## Files to inspect first\n- .planner/project.json\n- .planner/features/\n- .planner/phases/05939f14-382c-488f-8dac-dc80f79f760f.json\n- .planner/.local/resume.json\n- .planner/.local/generated/PLAN.md\n\n## Blockers\n- None recorded\n\n## Next steps\n- Resume task 7a571918-7e8a-4861-a4db-e774db23bb8f — Verify no-disturbance blocking on a physical iPhone.\n- Review the task details and continue implementation in phase 05939f14-382c-488f-8dac-dc80f79f760f.\n- When the work is complete, call task_complete so the derived phase/feature statuses stay correct.\n\n## Recent activity\n- Latest feature update: Platform verification and measurement (in-progress) at 2026-09-16T14:08:10.319Z\n- Latest phase update: Verify silent blocking on physical Android and iPhone devices (in-progress) at 2026-09-16T14:21:05.246Z\n- Latest task update: Verify no-disturbance blocking on a physical iPhone (in-progress) at 2026-09-16T14:21:05.246Z\n\n## Reminder\n- This handoff remains active until every task in this phase is done/canceled, a newer handoff replaces it, or the user explicitly clears it. Reading or starting a task never clears it.",
+  "handoffUpdatedAt": "2026-09-16T14:24:40.024Z",
+  "handoffAudit": null,
+  "handoffReadAt": "",
+  "handoffHistory": [],
+  "statusLog": [
+    {
+      "id": "eac0a216-5f64-495a-9bcd-7f51b6127c68",
+      "date": "2026-09-16T14:21:05.255Z",
+      "fromStatus": "draft",
+      "toStatus": "in-progress",
+      "title": "draft → in-progress",
+      "description": ""
+    }
+  ],
+  "sessionInfo": [
+    {
+      "sessionId": "pi:01a090d0-5a08-727b-af7a-87dad496f0b2",
+      "createdAt": "2026-09-17T13:11:13.812Z"
+    }
+  ]
+}

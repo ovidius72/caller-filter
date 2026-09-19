@@ -1,11 +1,15 @@
 {
   "name": "Caller Filter",
   "goal": "Let a user express any filtering rule they want, once, and have it mean the same thing on every platform — applied live where the OS permits, pre-expanded where it does not, and honestly reported where it cannot fit.",
-  "description": "A call and SMS filtering app for Android and iOS (Huawei possible later), built around user-authored filter rules rather than a fixed spam list.\n\nThe user writes rules — exact number, pattern, starts-with, ends-with, prefix, caller ID, or originating city/region — and the app applies them to incoming calls and messages. Where a platform cannot honour a rule, the app says so explicitly with the real number behind the limit.\n\nThe differentiator is that competitors ship a static spam list the user cannot edit. This ships user-authored rules, evaluated live where the OS allows it and pre-expanded into number lists where it does not, from one shared engine.",
+  "description": "A call and SMS filtering app for Android and iOS (Huawei possible later), built around user-authored filter rules rather than a fixed spam list.\n\nThe user writes rules — exact number, pattern, starts-with, ends-with, prefix, caller ID, or originating city/region — and the app applies them to incoming calls and messages. Where a platform cannot honour a rule, the app says so explicitly with the real number behind the limit.\n\nThe differentiator is that competitors ship a static spam list the user cannot edit. This ships user-authored rules, evaluated live where the OS allows it and pre-expanded into number lists where it does not, from one shared engine.\n\nPartial-number filtering is a fundamental release-1 requirement, not an optional enhancement. Users must be able to author prefixes, suffixes and wildcard patterns such as `0852296xxxx`, in national format with the relevant country context or in international format. The shared core must validate and interpret these rules consistently across platforms, preserving their meaning and explicitly reporting platform limitations.",
   "projectGuidelines": {
     "content": "# Project Guidelines — Caller Filter\n\nCoding standards and working rules. What the product must *do* lives in the requirements; platform facts live on the features.\n\n## 1. Nothing country-specific in code\n\nNo country, country code, prefix, number length, area code, place name, carrier, or data source may be compiled into a source file. Everything that varies by country is data loaded at runtime.\n\nAdding a country means shipping its data. Adding a language means shipping its file. Neither is a code change and neither is a release.\n\nTells that this rule is being broken:\n- a country list, country code, or number length appears in a source file\n- the code branches on which country it is\n- a fixed set of number types is assumed — not every country defines every type\n- a threshold that should have been measured is written as a literal\n\n## 2. Store the rule, never the expansion\n\nA user's rule is persisted as the rule. The expanded list of exact numbers is a derived per-platform artifact, regenerated when the rule changes, when metadata updates, or when the measured limit changes.\n\nNever persist an expansion as if it were the rule. A metadata update would silently rot every rule, and the platform that never expands would drift from the one that does.\n\nCross-cutting: binds storage, sync, and both platform shells.\n\n## 3. Logic lives in the shared core\n\nFiltering logic goes in the Rust core, once. Platform shells stay thin — they adapt the core to an OS API and do no filtering of their own.\n\nAbout to write filtering logic in Swift or Kotlin? It belongs in the core instead.\n\n## 4. Measured, not assumed\n\nVerify against the SDK, the metadata, or a real device. Never promote an unverified claim to a decision — mark it unverified and say why.\n\nAny threshold that can be measured is measured, then held as configuration. Never a constant.\n\n## 5. Be brief\n\nShort sentences. Plain English. No jargon.\n\n- Answer first. Stop.\n- Don't explain what wasn't asked.\n- Don't restate what was just said.\n- No caveats or background unless they change what the reader does.\n- One question at a time, not a menu.\n- Report findings as facts, not stories about finding them.\n\nLong answers cost money and hide the point.",
     "updatedAt": "2026-09-08T11:07:35.914Z",
     "sessionInfo": [
+      {
+        "sessionId": "pi:01a090d0-5a08-727b-af7a-87dad496f0b2",
+        "createdAt": "2026-09-15T13:55:20.734Z"
+      },
       {
         "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
         "createdAt": "2026-09-09T06:54:49.444Z"
@@ -16,7 +20,7 @@
       }
     ]
   },
-  "webPort": 0,
+  "webPort": 3030,
   "scope": [
     "RELEASE 1 — incoming CALL and SMS filtering on Android and iOS, shipped together in one release",
     "RELEASE 1 — user-authored rules: deny and allow, by exact number, pattern, starts-with, ends-with, prefix, caller ID, originating city/region",
@@ -138,6 +142,30 @@
       "rationale": "Migrated from the legacy project decisions collection.",
       "implementationNotes": "Review and enrich this structured decision when additional rationale or implementation detail is available.",
       "acceptedAt": "2026-09-09T06:54:47.048Z"
+    },
+    {
+      "id": "3b4f70c5-9ae6-4f7f-aaa4-74943d31ec4b",
+      "title": "Worldwide use, not a country-enablement workflow",
+      "decision": "The software must be usable from any country. End users create filters for numbers from their own or other countries, cities and partial-number patterns. Neither the user nor the operator is expected to add or enable countries as a product workflow. This clarifies the existing intended scope; it does not request a feature for adding newly created countries.",
+      "rationale": "The user clarified that the goal is worldwide filtering, not progressively enabling countries. The earlier explanation of a hypothetical future region identifier confused a dependency edge case with the product requirement.",
+      "implementationNotes": "Assess global behavior using runtime numbering/geocoding data and existing rule semantics. Do not introduce country activation lists, an add-country feature or country-specific source facts. Coverage still requires verification; this decision alone is not evidence of coverage or permission for source edits. Originally accepted 2026-09-13T17:53:39.283Z as 7559a03b-4c40-4fe5-b0a2-ed0dc1419a9e on F002/P005; relocated to project scope with explicit user approval. Dependency constraints and audit findings remain in F002/P005.",
+      "acceptedAt": "2026-09-14T07:14:40.080Z"
+    },
+    {
+      "id": "694856cf-a4d9-499f-955e-34792c69832a",
+      "title": "A newly established country may require a dependency and app release",
+      "decision": "The user explicitly accepts updating rust-phonenumber and releasing a new app version if a newly established country/region introduces an identifier the dependency does not yet recognize. Maintaining that country knowledge is the upstream library's responsibility, not a country-enablement product workflow.",
+      "rationale": "Worldwide use by ordinary users is required; supporting a hypothetical newly established country without any software release is not. The earlier unknown-country-enum warning overstated the practical requirement.",
+      "implementationNotes": "This is a narrow exception to the no-release wording about adding countries. Ordinary numbering/geocoding data updates for supported countries remain runtime data updates. Preserve the ban on country-specific facts in our source; do not build our own country registry or country activation feature. No source or dependency update is requested now. Originally accepted 2026-09-13T18:03:44.218Z as 481b14cd-7b7a-4dac-a289-cc4694102d11 on F002/P005; relocated to project scope with explicit user approval.",
+      "acceptedAt": "2026-09-14T07:14:53.029Z"
+    },
+    {
+      "id": "b4f950dd-58cb-409b-95bf-05de76cdb2cb",
+      "title": "Partial-number filters and valid user input are fundamental",
+      "decision": "User-authored partial-number filters such as 0852296xxxx are fundamental release-1 functionality, not an optional extension. Each x represents one digit. Users must be able to author prefixes, suffixes and wildcard patterns in national format with the relevant country context or in international format, for their own or other countries. The shared core must validate and interpret these rules consistently, preserve their meaning and explicitly report platform limitations. A pattern is not a complete telephone number and must not be validated as though wildcards were ordinary digits.",
+      "rationale": "This reaffirms the original R2 requirement, including its partial-number deny/allow example; it is not newly discovered scope. The user explicitly reconfirmed partial filters and correct number input. A working internal matcher alone does not establish a complete user-input path.",
+      "implementationNotes": "Use the existing numbering library for complete-number parsing/validation and its runtime metadata for numbering-plan facts. Numbering-plan validity does not prove that a number is assigned or active. Do not put filtering or national-pattern interpretation into platform shells. Concrete authoring/validation gaps and code references are retained as technical notes in F002/P005, not as globally scoped implementation details. Originally accepted 2026-09-13T18:03:58.695Z as 4c31ca2b-25a6-4e46-b6e5-0a5463d70786 on F002/P005; relocated to project scope with explicit user approval. No source edits or task reopening are authorized by this metadata correction.",
+      "acceptedAt": "2026-09-14T07:15:07.753Z"
     }
   ],
   "nextFeatureNumber": 1,

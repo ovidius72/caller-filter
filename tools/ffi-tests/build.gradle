@@ -1,0 +1,37 @@
+// Standalone JVM host harness. No Android SDK, Gradle plugins, or downloads.
+// Reuse the Kotlin compiler/runtime and JNA already shipped with local Gradle.
+def repo = file('../..')
+def out = new File(repo, 'target/ffi-tests')
+layout.buildDirectory = new File(out, 'gradle-build')
+def hostJars = fileTree(new File(gradle.gradleHomeDir, 'lib')) {
+    include 'kotlin-compiler-embeddable-*.jar', 'kotlin-stdlib-*.jar',
+        'kotlin-reflect-*.jar', 'kotlin-script-runtime-*.jar',
+        'kotlinx-coroutines-core-jvm-*.jar', 'annotations-*.jar',
+        'trove4j-*.jar', 'plugins/jna-*.jar'
+}
+def classes = new File(out, 'kotlin-classes')
+
+tasks.register('compileHost', JavaExec) {
+    classpath = hostJars
+    mainClass = 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler'
+    doFirst {
+        classes.mkdirs()
+        if (!hostJars.files.any { it.name.startsWith('kotlin-compiler-embeddable-') } ||
+            !hostJars.files.any { it.name.startsWith('jna-') }) {
+            throw new GradleException('Host tests require Gradle with embedded Kotlin compiler and JNA')
+        }
+    }
+    args '-no-stdlib', '-no-reflect', '-classpath', hostJars.asPath,
+        '-d', classes.absolutePath,
+        new File(out, 'kotlin/uniffi/callerfilter_core/callerfilter_core.kt').absolutePath,
+        file('KotlinHostSmoke.kt').absolutePath,
+        file('KotlinHostSmokeTest.kt').absolutePath
+}
+
+tasks.register('hostTest', JavaExec) {
+    dependsOn 'compileHost'
+    classpath = files(classes) + hostJars
+    mainClass = 'ffi.tests.KotlinHostSmokeKt'
+    workingDir = repo
+    systemProperty 'jna.library.path', new File(repo, 'target/bindings').absolutePath
+}

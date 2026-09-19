@@ -1,0 +1,7 @@
+# UniFFI 0.32 --config uses a global configuration, not the legacy flat format.
+[defaults.bindings.kotlin]
+android = true
+# Use UniFFI's supported JNA cleaner on every API level. This avoids unavailable
+# java.lang.ref.Cleaner APIs on older Android and lets host tests execute the
+# exact same generated bindings. Native handles are still explicitly closed.
+disable_java_cleaner = true

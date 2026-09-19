@@ -17,50 +17,29 @@ func footprintMB() -> Double {
     return Double(info.phys_footprint) / 1024.0 / 1024.0
 }
 
+extension CXCallDirectoryExtensionContext: DirectoryEntrySink {}
+
 class CallDirectoryHandler: CXCallDirectoryProvider {
-
     override func beginRequest(with context: CXCallDirectoryExtensionContext) {
-        let n = (Bundle.main.object(forInfoDictionaryKey: "LimitTestN") as? NSString)?.integerValue ?? 1_000_000
-        let mode = (Bundle.main.object(forInfoDictionaryKey: "LimitTestMode") as? String) ?? "blocking"
-        let incremental = context.isIncremental
-
-        log.info("BEGIN n=\(n, privacy: .public) mode=\(mode, privacy: .public) incremental=\(incremental, privacy: .public) mem0=\(footprintMB(), privacy: .public)MB")
-
-        // If iOS asks for an incremental update we must not re-add what is already
-        // stored, or the insert hits a UNIQUE constraint (sqlite error 19).
-        // Wipe first so every run measures a clean full load.
-        if incremental {
-            context.removeAllBlockingEntries()
-            context.removeAllIdentificationEntries()
-            log.info("incremental request: cleared existing entries first")
+        let config: HarnessConfiguration
+        do {
+            // Decode before clearing any existing entries. No missing-fixture fallback.
+            config = try HarnessConfiguration.load(bundle: .main)
+        } catch {
+            log.error("Fixture rejected; no entries submitted")
+            context.cancelRequest(withError: NSError(domain: "HarnessFixture", code: 1))
+            return
         }
-
+        let n = config.entryCount
+        let mode = config.mode.rawValue
+        log.info("BEGIN n=\(n, privacy: .public) mode=\(mode, privacy: .public) incremental=\(context.isIncremental, privacy: .public) mem0=\(footprintMB(), privacy: .public)MB")
         let t0 = Date()
-        var last: Int64 = 0
-        let base: Int64 = 100_000_000_000   // well above any real number, strictly ascending from here
-
-        for i in 0..<n {
-            autoreleasepool {
-                let number = base + Int64(i)
-                precondition(number > last, "NOT ASCENDING at \(i)")
-                last = number
-                if mode == "identification" {
-                    context.addIdentificationEntry(withNextSequentialPhoneNumber: number, label: "spam")
-                } else {
-                    context.addBlockingEntry(withNextSequentialPhoneNumber: number)
-                }
-            }
-            if i > 0 && i % 500_000 == 0 {
-                log.info("PROGRESS i=\(i, privacy: .public) t=\(Date().timeIntervalSince(t0), privacy: .public)s mem=\(footprintMB(), privacy: .public)MB")
-            }
+        config.apply(to: context) { i in
+            log.info("PROGRESS i=\(i, privacy: .public) t=\(Date().timeIntervalSince(t0), privacy: .public)s mem=\(footprintMB(), privacy: .public)MB")
         }
-
-        let tGen = Date().timeIntervalSince(t0)
-        log.info("GENERATED n=\(n, privacy: .public) in \(tGen, privacy: .public)s peakMem=\(footprintMB(), privacy: .public)MB — calling completeRequest")
-
+        log.info("GENERATED n=\(n, privacy: .public) in \(Date().timeIntervalSince(t0), privacy: .public)s currentMem=\(footprintMB(), privacy: .public)MB — calling completeRequest")
         context.completeRequest { expired in
-            let tAll = Date().timeIntervalSince(t0)
-            log.info("COMPLETE n=\(n, privacy: .public) expired=\(expired, privacy: .public) total=\(tAll, privacy: .public)s mem=\(footprintMB(), privacy: .public)MB")
+            log.info("COMPLETE n=\(n, privacy: .public) expired=\(expired, privacy: .public) total=\(Date().timeIntervalSince(t0), privacy: .public)s mem=\(footprintMB(), privacy: .public)MB")
         }
     }
 }

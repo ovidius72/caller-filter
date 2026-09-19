@@ -1,0 +1,31 @@
+// SDK-independent tests of the actual probe engine with fresh UniFFI + host Rust.
+def repo = file('../../..')
+def out = new File(repo, 'target/device-tests/android-host-tests')
+layout.buildDirectory = new File(out, 'gradle-build')
+def hostJars = fileTree(new File(gradle.gradleHomeDir, 'lib')) {
+    include 'kotlin-compiler-embeddable-*.jar', 'kotlin-stdlib-*.jar',
+        'kotlin-reflect-*.jar', 'kotlin-script-runtime-*.jar',
+        'kotlinx-coroutines-core-jvm-*.jar', 'annotations-*.jar',
+        'trove4j-*.jar', 'plugins/jna-*.jar'
+}
+def classes = new File(out, 'classes')
+tasks.register('compileHost', JavaExec) {
+    classpath = hostJars
+    mainClass = 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler'
+    doFirst { classes.mkdirs() }
+    args '-no-stdlib', '-no-reflect', '-classpath', hostJars.asPath,
+        '-d', classes.absolutePath,
+        new File(repo, 'apps/android/app/generated/kotlin/uniffi/callerfilter_core/callerfilter_core.kt').absolutePath,
+        new File(repo, 'apps/android/app/src/main/java/com/antoniopantano/callerfilter/ProbeEngine.kt').absolutePath,
+        file('ProbeHostTests.kt').absolutePath
+}
+tasks.register('hostTest', JavaExec) {
+    dependsOn 'compileHost'
+    classpath = files(classes) + hostJars
+    mainClass = 'com.antoniopantano.callerfilter.ProbeHostTestsKt'
+    systemProperty 'jna.library.path', new File(repo, 'target/bindings').absolutePath
+    def data = new groovy.json.JsonSlurper().parse(new File(repo, 'tools/entry-limit-harness/harness-defaults.json'))
+    // Synthetic test data plus the private asset intended for this APK.
+    // Pass its path, not the personal number, on the process command line.
+    args data.syntheticBase, new File(repo, 'apps/android/app/generated/probeAssets/probe.properties').absolutePath
+}

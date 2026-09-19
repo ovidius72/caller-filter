@@ -123,6 +123,7 @@ name = "callerfilter-core"
 version = "0.1.0"
 dependencies = [
  "phonenumber",
+ "postcard",
  "uniffi",
 ]
 
@@ -131,6 +132,7 @@ name = "callerfilter-datasets"
 version = "0.1.0"
 dependencies = [
  "callerfilter-core",
+ "phonenumber",
 ]
 
 [[package]]

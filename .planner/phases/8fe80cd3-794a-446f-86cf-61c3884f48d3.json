@@ -1,0 +1,325 @@
+{
+  "id": "8fe80cd3-794a-446f-86cf-61c3884f48d3",
+  "featureId": "c2200077-ec99-4c5b-8bd8-cc9e8d8e4834",
+  "number": 14,
+  "shortId": "U8WXU",
+  "priority": 2,
+  "slug": "prepare-physical-device-silent-blocking-probes",
+  "title": "Prepare physical-device silent-blocking probes",
+  "discussedAt": "2026-09-14T18:37:43.819Z",
+  "contextReady": true,
+  "contextReadyReason": "Updated through phase_discuss tool.",
+  "summary": "Common protocol and both host-prepared probes are complete. Stop for device connection; no physical silent-blocking verdict yet.",
+  "description": "COMPLETED PREPARATION: T019, T020 and T021 are done. This phase supplies the common physical protocol and minimal installable probes, not production integration or a silent-call acceptance result. Prior P001 capacity/SDK evidence remains preserved.\n\nPROTOCOL: tools/device-tests/README.md and results-template.md define a deliberately missed empty-fixture baseline, ringing controls, repeated denied attempts and recovery in unlocked foreground/background and locked states. Observe sound, vibration, incoming UI, notifications and delayed carrier messages separately. Call records are allowed; the app adds no alert. No voicemail settings or carrier-service changes without consent.\n\nIPHONE: tools/entry-limit-harness/App/App.swift:12, Shared/HarnessConfiguration.swift:59/:113 and CallDir/CallDirectoryHandler.swift:22 support private exact/empty fixtures, real extension status/reload diagnostics and the preserved blocking/identification capacity modes. tools/device-tests/ios-probe.py:100/:143 stages private builds, checks packaged fixtures/versions and separates explicit signing/install. Unsigned empty and synthetic-exact Release iPhoneOS builds plus focused Swift/Python tests passed. These are host artifacts, not device-provisioned apps; the synthetic fixture is not callable. The harness README documents signing/install/enable/reload/clear/cleanup. Production CallDirectoryExtension remains separate and incomplete.\n\nANDROID: apps/android/app/src/main/java/com/antoniopantano/callerfilter/ScreeningService.kt:13/:33/:66 supplies the protected screening service. MainActivity.kt:17 provides role/fixture/status controls. ProbeEngine.kt:49/:63/:79 uses existing Rust exact matching and a one-response/deadline guard; ProbeStore.kt:32 keeps native initialization/evaluation and preference changes on a serial worker. Deny requests disallow/reject/missed-notification suppression, not silence-only or call-log hiding. Empty/nonmatch/error/deadline paths allow. Diagnostics are redacted and distinguish attempted responses from framework acknowledgement. The configured local watchdog and local-bind timing do not establish the full device deadline.\n\nANDROID BUILD/EVIDENCE: tools/build-android.sh plus tools/uniffi-android.toml generate fresh Rust libraries and Android-compatible JNA-cleaner bindings. JNA 5.17 and ABI filters provide paired Rust/JNA arm64-v8a, armeabi-v7a and x86_64 libraries, with checked 16KB ZIP/ELF64 alignment. tools/device-tests/android-probe.py:76/:116/:157 separates build/verification from explicit-device install/capture. Final development-signed APK: target/device-tests/android/ready-host-synthetic-asgtxqx5/caller-filter-probe.apk; sibling build record/log/manifest/permissions retain evidence. Actual Rust/JNA host cases and packaged input, six final Python tooling/static-guard tests, assembleDebug, Lint (0 errors, 10 non-blocking warnings), signature, inventory/permission/alignment checks and documentation/whitespace checks passed. The APK fixture is synthetic, not callable. android-probe.md documents prerequisites, private real-fixture rebuild, controls and cleanup.\n\nBOUNDARIES: no new matcher or exported Rust API, no national-number guessing and no production editor. Private numbers/device IDs/generated artifacts stay ignored; APK fixture data is not encrypted. Clearing Android deny does not erase its bundled fixture; empty rebuild/uninstall requires consent. iPhone App Groups, paid-team features and production shared storage are not prerequisites. Full UI, national partial-input validation, AND/OR, Contains, geography, OTA, SMS and capacity stress testing are not prerequisites and are not delivered here.\n\nNEXT: no preparation code remains. Stop for the user to connect both phones and authorize device actions. Pairing, trust, iPhone provisioning/extension approval, Android native startup/role grant, real callbacks/reloads/deadlines and physical observations belong to P017/T022–T023. Both probes precede either physical task; those tasks may run in either order and the second consolidates results. No installation, launch, role/extension change or real call has been performed in preparation. Later production integration must repeat accepted cases, and physical verification ends at the user's go/no-go gate.",
+  "descriptionUpdatedAt": "2026-09-16T14:07:22.752Z",
+  "notes": "",
+  "goals": [
+    "Have a reproducible protocol and evidence template for no-disturbance blocking on real Android/iOS calls.",
+    "Prepare minimal exact-number probes and repeatable build/install instructions without finishing the production apps.",
+    "Tell the user when both probes are ready and which pairing, authorization and calling steps require connected hardware."
+  ],
+  "nonGoals": [
+    "Physical call execution before the user connects devices.",
+    "Full P008/P011/P010/P013 delivery, settings/dashboard/filter CRUD, AND/OR, Contains, geographic hierarchy, OTA or national partial-number authoring.",
+    "Another entry-cap stress measurement, new voicemail settings, automatic carrier-service changes, SMS filtering or default-dialer/default-SMS privileges."
+  ],
+  "dependencies": [
+    "P001/T001 and T002 completed capacity/SDK evidence.",
+    "Existing shared-core exact matcher and P005 generated-binding contract.",
+    "T019 protocol before either platform probe; hardware is not needed to declare preparation ready, but device-bound pairing/provisioning remains pending."
+  ],
+  "dependsOn": [],
+  "risks": [
+    "Android native SDK/NDK/Gradle packaging may expose failures not covered by host JVM tests.",
+    "iOS signing, fixed-device scripts and App Group assumptions could accidentally turn a small probe into production integration.",
+    "Silent mode, Focus, other blockers or contact exemptions can create false positive results.",
+    "Neither an SDK contract nor a successful build/reload demonstrates absence of real-call alerts."
+  ],
+  "openQuestions": [
+    "Which Android handset/OS/carrier and iPhone/iOS/carrier will the user provide? Record when connected rather than guessing.",
+    "Which consented caller line(s) and carrier missed-call services will be present during execution?"
+  ],
+  "decisions": [],
+  "acceptedDecisions": [],
+  "completionCriteria": [
+    "T019 protocol and private fixture/evidence handling are documented.",
+    "T020 iPhone probe and T021 Android APK build successfully with focused verification and reproducible commands.",
+    "Both probes have blocked and allowed/empty controls, visible enablement diagnostics and no custom call notifications.",
+    "Preparation-ready report clearly separates checks completed on the host from pairing/permissions/real-call tests still pending; stop and await device connection."
+  ],
+  "taskIds": [
+    "229e5dfb-2894-4413-8246-d4b24d911cb4",
+    "61856e2d-306c-486c-bc54-32ca797719f4",
+    "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2"
+  ],
+  "tasks": [
+    {
+      "id": "229e5dfb-2894-4413-8246-d4b24d911cb4",
+      "phaseId": "8fe80cd3-794a-446f-86cf-61c3884f48d3",
+      "number": 19,
+      "shortId": "P7AN7",
+      "priority": 1,
+      "shortName": "define-the-silent-blocking-dev",
+      "title": "Define the silent-blocking device protocol and evidence matrix",
+      "status": "done",
+      "description": "design-only preparation of the real-device acceptance protocol. No incoming-call behavior has been verified yet: tools/entry-limit-harness/README.md:1 documents entry-capacity measurements, tools/entry-limit-harness/App/App.swift:42 records reload outcomes, and apps/android/app/src/main/java/com/antoniopantano/callerfilter/MainActivity.kt:9 remains a version demo. Read the completed P001/T001 and T002 evidence, but do not promote their SDK/load results to physical call-behavior proof.\n\nDELIVERABLES: add a concise protocol and a reusable result template under tools/device-tests/ (proposed README.md and results-template.md). Describe the minimum builds and exact-number fixture handoff needed by the two sibling preparation tasks. Real numbers, handset identifiers, screenshots and raw logs belong in ignored/local artifacts; committed evidence uses aliases and redaction.\n\nCASES: start with a permitted real cellular call that visibly rings, with Focus/Do Not Disturb, silent mode and other call blockers controlled and recorded. Test one consented, explicitly presented exact caller number with screen locked/unlocked and the probe in foreground/background/not visibly open. Repeat after clearing the block to prove recovery. For Android keep the caller out of contacts unless READ_CONTACTS is deliberately tested; anonymous/withheld calls are not suitable evidence because they never reach screening. Record extension/role state, loaded fixture, build, OS version, handset and carrier for each run.\n\nOUTCOME: blocked calls must not ring, vibrate, show incoming-call UI, or create blocked/missed-call notifications. Call-log entries are acceptable. Observe new and delayed SMS/other unsolicited alerts separately and identify their origin only where evidenced. Carrier services can generate missed-call messages independently; do not assume a message must occur or that the app can disable it. Do not add voicemail settings or require SMS filtering/default-SMS status. Define and record an observation window rather than assuming immediate silence proves no delayed disturbance.\n\nUse pass/fail/blocked/not-tested per case. SDK contracts, simulator runs, host tests and extension-load success cannot replace human observation on real phones. Consent, device connection and any carrier/system changes remain with the user. Produce a readiness checklist before asking the user to connect devices; later production integration must repeat the accepted cases. This task defines the protocol, not the outcome or implementation of either probe.\n\n---\n**Completion summary:**\nCompleted the design-only protocol and evidence template. Added tools/device-tests/README.md:7 (no-disturbance acceptance), :20 (SDK/source facts versus unverified physical behavior), :44 (private canonical fixture/evidence handoff), :69 (bounded T020/T021 deliverables and readiness), :100 (controlled setup and configurable observation windows), :125 (M0 baseline notification control plus S1/S2/S3 allowed/deny/recovery matrix), and :170 (evidence classification, cleanup and user go/no-go). Added tools/device-tests/results-template.md:8 (device/build/permission record), :25 (settings and timing parameters), :50 (13 required call records with the suggested two deny attempts per state, plus optional nonmatching caller N), :79 (per-attempt channels/timing/evidence), :107 (delayed alert log), :118 (verdict/recovery) and :133 (cross-platform review).\n\nReviewed completed T001/T002 evidence, the current iPhone capacity README/handler/installer/app, Android manifest/native build script, and SDK-36 CallScreeningService lifecycle/builder contracts. Documented that legacy call-log-hiding claims are incorrect for ordinary third-party Android apps; permitted Recents records are not failures. No new global product decision was invented. No-disturbance acceptance, unknown carrier attribution, caller consent and no voicemail/SMS workaround preserve the agreed scope. The deliberately missed M0 control detects globally suppressed notifications; answered A/C controls avoid contaminating deny evidence with additional missed calls. Force-stop/reboot are separate optional lifecycle cases, not disguised background tests.\n\nVERIFICATION: personally reread both new documents and the edited sections. Read-only Python checks passed for all local Markdown links, final newline/trailing whitespace, possible phone/UDID literals, unique M0/S1/S2/S3 case IDs, all 13 required rows initially not-tested, optional N, verdict vocabulary, observation channels and pending user go/no-go. git check-ignore -v confirmed target/device-tests fixture/result paths are ignored; git diff --check passed. No Rust/app build or test suite was run because this task changes documentation only. No physical calls, device installations or silence measurements were performed, and no test result is prefilled as a pass.\n\nREMAINING: none within T019. T020 must implement/build the iPhone probe and T021 the Android probe; the user is asked to connect devices only after both are preparation-ready. T022/T023 still require actual handset/OS/carrier data, consent and real-call evidence. Supplied observation values are configurable test starting points, not measured maximum carrier delays. Source changes in this task are only the two approved Markdown files; existing unrelated work is untouched. No commit or push.",
+      "descriptionUpdatedAt": "2026-09-15T08:57:20.214Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "229e5dfb-2894-4413-8246-d4b24d911cb4-check-001-planned-in-progress",
+          "date": "2026-09-15T07:51:14.073Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        },
+        {
+          "id": "229e5dfb-2894-4413-8246-d4b24d911cb4-check-002-in-progress-done",
+          "date": "2026-09-15T08:57:20.212Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "Completed the design-only protocol and evidence template. Added tools/device-tests/README.md:7 (no-disturbance acceptance), :20 (SDK/source facts versus unverified physical behavior), :44 (private canonical fixture/evidence handoff), :69 (bounded T020/T021 deliverables and readiness), :100 (controlled setup and configurable observation windows), :125 (M0 baseline notification control plus S1/S2/S3 allowed/deny/recovery matrix), and :170 (evidence classification, cleanup and user go/no-go). Added tools/device-tests/results-template.md:8 (device/build/permission record), :25 (settings and timing parameters), :50 (13 required call records with the suggested two deny attempts per state, plus optional nonmatching caller N), :79 (per-attempt channels/timing/evidence), :107 (delayed alert log), :118 (verdict/recovery) and :133 (cross-platform review).\n\nReviewed completed T001/T002 evidence, the current iPhone capacity README/handler/installer/app, Android manifest/native build script, and SDK-36 CallScreeningService lifecycle/builder contracts. Documented that legacy call-log-hiding claims are incorrect for ordinary third-party Android apps; permitted Recents records are not failures. No new global product decision was invented. No-disturbance acceptance, unknown carrier attribution, caller consent and no voicemail/SMS workaround preserve the agreed scope. The deliberately missed M0 control detects globally suppressed notifications; answered A/C controls avoid contaminating deny evidence with additional missed calls. Force-stop/reboot are separate optional lifecycle cases, not disguised background tests.\n\nVERIFICATION: personally reread both new documents and the edited sections. Read-only Python checks passed for all local Markdown links, final newline/trailing whitespace, possible phone/UDID literals, unique M0/S1/S2/S3 case IDs, all 13 required rows initially not-tested, optional N, verdict vocabulary, observation channels and pending user go/no-go. git check-ignore -v confirmed target/device-tests fixture/result paths are ignored; git diff --check passed. No Rust/app build or test suite was run because this task changes documentation only. No physical calls, device installations or silence measurements were performed, and no test result is prefilled as a pass.\n\nREMAINING: none within T019. T020 must implement/build the iPhone probe and T021 the Android probe; the user is asked to connect devices only after both are preparation-ready. T022/T023 still require actual handset/OS/carrier data, consent and real-call evidence. Supplied observation values are configurable test starting points, not measured maximum carrier delays. Source changes in this task are only the two approved Markdown files; existing unrelated work is untouched. No commit or push."
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "229e5dfb-2894-4413-8246-d4b24d911cb4-check-001-review-existing-sdk-and-iphone-capacity-evidence-and-identify-what-remains-unverified-on-real-calls",
+          "number": 1,
+          "title": "Review existing SDK and iPhone capacity evidence and identify what remains unverified on real calls.",
+          "checked": true
+        },
+        {
+          "id": "229e5dfb-2894-4413-8246-d4b24d911cb4-check-002-define-positive-controls-blocked-call-cases-recovery-cases-and-the-no-disturbance-acceptance-criteria",
+          "number": 2,
+          "title": "Define positive controls, blocked-call cases, recovery cases and the no-disturbance acceptance criteria.",
+          "checked": true
+        },
+        {
+          "id": "229e5dfb-2894-4413-8246-d4b24d911cb4-check-003-define-handset-os-carrier-app-state-capture-observation-windows-and-separate-carrier-sms-evidence",
+          "number": 3,
+          "title": "Define handset/OS/carrier/app-state capture, observation windows and separate carrier-SMS evidence.",
+          "checked": true
+        },
+        {
+          "id": "229e5dfb-2894-4413-8246-d4b24d911cb4-check-004-document-private-fixture-artifact-handling-user-prerequisites-and-a-readiness-checklist-for-connecting-both-phones",
+          "number": 4,
+          "title": "Document private fixture/artifact handling, user prerequisites and a readiness checklist for connecting both phones.",
+          "checked": true
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-15T07:51:14.073Z",
+      "completedAt": "2026-09-15T08:57:20.212Z",
+      "createdAt": "2026-09-14T18:35:40.576Z",
+      "updatedAt": "2026-09-15T08:57:20.212Z",
+      "sessionInfo": [
+        {
+          "sessionId": "pi:01a090d0-5a08-727b-af7a-87dad496f0b2",
+          "createdAt": "2026-09-15T07:51:14.043Z"
+        }
+      ],
+      "activeOwnerSession": ""
+    },
+    {
+      "id": "61856e2d-306c-486c-bc54-32ca797719f4",
+      "phaseId": "8fe80cd3-794a-446f-86cf-61c3884f48d3",
+      "number": 20,
+      "shortId": "FB7EY",
+      "priority": 2,
+      "shortName": "prepare-an-installable-iphone",
+      "title": "Prepare an installable iPhone silent-blocking probe",
+      "status": "done",
+      "description": "CURRENT STATE: reuse tools/entry-limit-harness/, not the unfinished production iOS app. CallDir/CallDirectoryHandler.swift:20 loads synthetic consecutive entries to measure capacity; App/App.swift:42 runs/retries reloads and appends timing results; project.yml configures the signed extension; run.sh:12/:15 selects a fixed old device for build/install. apps/ios/CallDirectoryExtension/CallDirectoryHandler.swift:10 only links coreVersion and emits no blocking entries. Existing Release/ENABLE_DEBUG_DYLIB=NO, NSExtension configuration and incremental-clear fixes must be preserved.\n\nGOAL: an installable, minimal Call Directory probe for the T019 protocol, with one configured real exact number, positive-control/empty-list mode and visible loading/enablement diagnostics. Preserve the historical capacity and identification test modes; do not replace their measured evidence. This probe tests OS blocking behavior, not a shipped editor, number normalization, geographic expansion or complete F004 integration.\n\nIMPLEMENTATION SURFACE: extend tools/entry-limit-harness/{App/App.swift,CallDir/CallDirectoryHandler.swift,project.yml,run.sh,README.md}, with fixture/run helpers under tools/device-tests/ if needed. Select the device explicitly via an argument or environment/configuration input, never a committed UDID or the first of multiple attached devices. Supply already validated canonical exact-number fixtures as private runtime/bundled data, not country-specific source literals. Use the existing Rust core/tooling if rule interpretation or normalization is needed; add no filtering algorithm in Swift.\n\nProvide a real-number blocking mode and an empty/clear control. Honor strictly ascending entries and incremental requests; report reload errors and actual extension enabled/disabled/unknown state. A generated fixture and explicit rebuild/reload is sufficient to change the test entry: do not make App Groups, a paid team or the full production rule store prerequisites merely to share editable test data. Keep signing configuration external and explain any provisioning constraint found.\n\nCHECKS: build for physical iPhone, preserve known build fixes, verify fixture packaging and the empty/nonempty request paths where automation is possible. Prepare reproducible install, enable, clear/disable and cleanup instructions. A device connection may still be required for pairing/provisioning/trust; document this instead of claiming it tested. Never create notifications, caller-ID labels or fake blocked-call history in the new mode. Reload success is only proof that iOS accepted the list. Stop at a preparation-ready report; actual calls and physical acceptance belong to P017.\n\n---\n**Completion summary:**\nPREPARATION COMPLETED — 2026-09-15. No physical device was used. The checked-in probe source and reproducible build/install procedure are ready; current artifacts are UNSIGNED iPhoneOS Release builds, not already installable signed apps. Device-bound signing/provisioning/trust, extension activation and real-call acceptance remain in P017/T023.\n\nDELIVERED: tools/entry-limit-harness/Shared/HarnessConfiguration.swift:5/:59/:113 decodes private fixture data before OS mutation and streams exact, empty and preserved capacity blocking/identification modes. Exact input is one prevalidated canonical international number, not new Swift numbering-plan validation or rule interpretation. Full/incremental paths are covered; incremental loads clear both existing blocking and identification entries. The synthetic base and retry/progress controls are runtime JSON in harness-defaults.json, not phone-country constants. Invalid/missing fixtures fail rather than falling back to synthetic entries. Shared/HarnessLoadState.swift:4 and App/App.swift:12 distinguish checking/unknown/disabled/enabled, loading, success and failure. Readiness requires successful reload plus enabled status. Exact/empty modes require manual reload; capacity mode retains automatic loading and bounded currentlyLoading retries. Logs record timestamped reloads, not blocked calls, and omit numbers/raw OS descriptions. No new-mode identification labels, app alerts or call-history claims.\n\nBUILD/OPERATIONS: tools/device-tests/ios-probe.py:22/:45/:55/:70/:100/:143 creates private staging under ignored target/device-tests/ios/, validates matching fixtures and app/extension versions, embeds the extension, records artifact hashes/revision/dirty state, and separates unsigned build, explicitly device-targeted signing, and installation. run.sh retains numeric capacity arguments but now builds only by default; installation is deliberately explicit rather than using the removed fixed UDID. No automatic device registration/provisioning updates. project.yml preserves Release/ENABLE_DEBUG_DYLIB=NO and correct NSExtension metadata; fixes matching bundle versions and orientation metadata. Generated project/plists stay in private staging; tracked CallDir/Info.plist was unchanged. README.md:30/:79/:124 documents build, sign/install, enablement, fixture switching, recovery, log capture, cleanup and privacy. tools/device-tests/README.md has only its stale iPhone-harness reference refreshed.\n\nVERIFICATION: bash tools/device-tests/test-ios-probe.sh passed: Swift transport/emission/load-state checks including 27 rejected malformed fixtures, exact/empty full and incremental paths, repeated reload/recovery, capacity sorting, zero count and overflow; six Python tests for fixture staging, signing/device guards, bundle fixture/version/profile checks and mocked explicit installer dispatch. Final unsigned empty and synthetic-exact Release iPhoneOS builds both passed with Xcode 26.3 / iPhoneOS SDK 26.2. Executables are arm64; matching packaged fixture/version checks passed, and CallDirectoryHandler is registered in the executable Objective-C class list (not a preview dylib). Only benign no-AppIntents-dependency warnings remain. Local doc links, source privacy/identifier scans, shell syntax, git diff --check and unchanged tracked extension plist passed. Tests did not rerun unrelated Rust suites.\n\nARTIFACTS: target/device-tests/ios/ready-control-deanx5yi/derived/Build/Products/Release-iphoneos/LimitTest.app and target/device-tests/ios/ready-host-synthetic-j09oegn4/derived/Build/Products/Release-iphoneos/LimitTest.app; each parent run directory contains build.log, build-record.json and staged source. The exact artifact contains SYNTHETIC HOST-TEST DATA ONLY, not a callable fixture. Focused logs: /tmp/caller-filter-t020-tests.log, /tmp/caller-filter-t020-build.log, /tmp/caller-filter-t020-exact-build.log.\n\nFILES: five planned harness files modified; added Shared/HarnessConfiguration.swift, Shared/HarnessLoadState.swift, harness-defaults.json and tools/device-tests/{ios-probe.py,ios-probe-config.swift,ios-probe-tests.swift,test-ios-probe.py,test-ios-probe.sh}; refreshed the protocol README reference. No production iOS/Android source or Rust changes in T020. No install, launch, OS reload, real call, settings change, commit or push occurred. No staged files. Next preparation task is T021 Android; physical silence is still entirely unverified.",
+      "descriptionUpdatedAt": "2026-09-15T14:07:23.005Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "61856e2d-306c-486c-bc54-32ca797719f4-check-001-planned-in-progress",
+          "date": "2026-09-15T10:25:56.715Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        },
+        {
+          "id": "61856e2d-306c-486c-bc54-32ca797719f4-check-002-in-progress-done",
+          "date": "2026-09-15T14:07:23.003Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "PREPARATION COMPLETED — 2026-09-15. No physical device was used. The checked-in probe source and reproducible build/install procedure are ready; current artifacts are UNSIGNED iPhoneOS Release builds, not already installable signed apps. Device-bound signing/provisioning/trust, extension activation and real-call acceptance remain in P017/T023.\n\nDELIVERED: tools/entry-limit-harness/Shared/HarnessConfiguration.swift:5/:59/:113 decodes private fixture data before OS mutation and streams exact, empty and preserved capacity blocking/identification modes. Exact input is one prevalidated canonical international number, not new Swift numbering-plan validation or rule interpretation. Full/incremental paths are covered; incremental loads clear both existing blocking and identification entries. The synthetic base and retry/progress controls are runtime JSON in harness-defaults.json, not phone-country constants. Invalid/missing fixtures fail rather than falling back to synthetic entries. Shared/HarnessLoadState.swift:4 and App/App.swift:12 distinguish checking/unknown/disabled/enabled, loading, success and failure. Readiness requires successful reload plus enabled status. Exact/empty modes require manual reload; capacity mode retains automatic loading and bounded currentlyLoading retries. Logs record timestamped reloads, not blocked calls, and omit numbers/raw OS descriptions. No new-mode identification labels, app alerts or call-history claims.\n\nBUILD/OPERATIONS: tools/device-tests/ios-probe.py:22/:45/:55/:70/:100/:143 creates private staging under ignored target/device-tests/ios/, validates matching fixtures and app/extension versions, embeds the extension, records artifact hashes/revision/dirty state, and separates unsigned build, explicitly device-targeted signing, and installation. run.sh retains numeric capacity arguments but now builds only by default; installation is deliberately explicit rather than using the removed fixed UDID. No automatic device registration/provisioning updates. project.yml preserves Release/ENABLE_DEBUG_DYLIB=NO and correct NSExtension metadata; fixes matching bundle versions and orientation metadata. Generated project/plists stay in private staging; tracked CallDir/Info.plist was unchanged. README.md:30/:79/:124 documents build, sign/install, enablement, fixture switching, recovery, log capture, cleanup and privacy. tools/device-tests/README.md has only its stale iPhone-harness reference refreshed.\n\nVERIFICATION: bash tools/device-tests/test-ios-probe.sh passed: Swift transport/emission/load-state checks including 27 rejected malformed fixtures, exact/empty full and incremental paths, repeated reload/recovery, capacity sorting, zero count and overflow; six Python tests for fixture staging, signing/device guards, bundle fixture/version/profile checks and mocked explicit installer dispatch. Final unsigned empty and synthetic-exact Release iPhoneOS builds both passed with Xcode 26.3 / iPhoneOS SDK 26.2. Executables are arm64; matching packaged fixture/version checks passed, and CallDirectoryHandler is registered in the executable Objective-C class list (not a preview dylib). Only benign no-AppIntents-dependency warnings remain. Local doc links, source privacy/identifier scans, shell syntax, git diff --check and unchanged tracked extension plist passed. Tests did not rerun unrelated Rust suites.\n\nARTIFACTS: target/device-tests/ios/ready-control-deanx5yi/derived/Build/Products/Release-iphoneos/LimitTest.app and target/device-tests/ios/ready-host-synthetic-j09oegn4/derived/Build/Products/Release-iphoneos/LimitTest.app; each parent run directory contains build.log, build-record.json and staged source. The exact artifact contains SYNTHETIC HOST-TEST DATA ONLY, not a callable fixture. Focused logs: /tmp/caller-filter-t020-tests.log, /tmp/caller-filter-t020-build.log, /tmp/caller-filter-t020-exact-build.log.\n\nFILES: five planned harness files modified; added Shared/HarnessConfiguration.swift, Shared/HarnessLoadState.swift, harness-defaults.json and tools/device-tests/{ios-probe.py,ios-probe-config.swift,ios-probe-tests.swift,test-ios-probe.py,test-ios-probe.sh}; refreshed the protocol README reference. No production iOS/Android source or Rust changes in T020. No install, launch, OS reload, real call, settings change, commit or push occurred. No staged files. Next preparation task is T021 Android; physical silence is still entirely unverified."
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "61856e2d-306c-486c-bc54-32ca797719f4-check-001-add-a-private-exact-number-fixture-and-blocking-empty-list-controls-without-changing-the-old-capacity-test-behavior",
+          "number": 1,
+          "title": "Add a private exact-number fixture and blocking/empty-list controls without changing the old capacity-test behavior.",
+          "checked": true
+        },
+        {
+          "id": "61856e2d-306c-486c-bc54-32ca797719f4-check-002-show-extension-state-and-reload-success-errors-preserve-sorted-and-incremental-safe-requests",
+          "number": 2,
+          "title": "Show extension state and reload success/errors; preserve sorted and incremental-safe requests.",
+          "checked": true
+        },
+        {
+          "id": "61856e2d-306c-486c-bc54-32ca797719f4-check-003-make-device-selection-signing-inputs-and-installation-cleanup-steps-explicit-and-repeatable",
+          "number": 3,
+          "title": "Make device selection, signing inputs and installation/cleanup steps explicit and repeatable.",
+          "checked": true
+        },
+        {
+          "id": "61856e2d-306c-486c-bc54-32ca797719f4-check-004-build-and-verify-the-probe-as-far-as-possible-without-attached-hardware-report-remaining-on-device-authorization-steps-and-readiness",
+          "number": 4,
+          "title": "Build and verify the probe as far as possible without attached hardware; report remaining on-device authorization steps and readiness.",
+          "checked": true
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [
+        "229e5dfb-2894-4413-8246-d4b24d911cb4"
+      ],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-15T10:25:56.715Z",
+      "completedAt": "2026-09-15T14:07:23.003Z",
+      "createdAt": "2026-09-14T18:36:03.928Z",
+      "updatedAt": "2026-09-15T14:07:23.003Z",
+      "sessionInfo": [
+        {
+          "sessionId": "pi:01a090d0-5a08-727b-af7a-87dad496f0b2",
+          "createdAt": "2026-09-15T13:55:11.467Z"
+        }
+      ],
+      "activeOwnerSession": ""
+    },
+    {
+      "id": "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2",
+      "phaseId": "8fe80cd3-794a-446f-86cf-61c3884f48d3",
+      "number": 21,
+      "shortId": "7LCTU",
+      "priority": 3,
+      "shortName": "prepare-an-installable-android",
+      "title": "Prepare an installable Android silent-blocking probe",
+      "status": "done",
+      "description": "CURRENT STATE: apps/android/app/src/main/java/com/antoniopantano/callerfilter/MainActivity.kt:9 displays core version only; apps/android/app/src/main/AndroidManifest.xml:1 declares no CallScreeningService. apps/android/app/build.gradle.kts:1 already includes generated UniFFI Kotlin/JNI outputs and JNA. tools/build-android.sh:30 cross-compiles the Rust core through cargo-ndk, then generates fresh host-derived bindings. core/src/ffi.rs:309 provides PreparedRules and existing exact-number matching; no new rule type is needed. P001/T002 confirms SDK contracts, not a running device service.\n\nGOAL: use the Android skeleton as a small diagnostic probe for T019, not a full P011/P013 implementation. Add a properly declared CallScreeningService protected by BIND_SCREENING_SERVICE and a minimal role/fixture/status control surface. Proposed files: MainActivity.kt and a new sibling ScreeningService.kt, AndroidManifest.xml, focused tests, tools/device-tests/ run instructions/helper, and build wiring only if required for actual native packaging.\n\nIMPLEMENTATION: request/detect ROLE_CALL_SCREENING; load one user-supplied canonical exact deny rule through the existing Rust PreparedRules boundary, keep number matching in Rust, and adapt its verdict to the OS response. No Kotlin copy of matcher/normalization logic. Keep heavy dataset loading off the call path; the exact-number probe does not require geographic datasets, national-pattern authoring or a whole expansion list. Reply inside the documented five-second screening deadline. Handle nonmatching callers normally and report malformed fixture/unavailable core states honestly rather than accidentally blocking every caller.\n\nFor a denied call request blocking and suppression of the missed-call notification, and explicitly document the chosen reject behavior. setSilenceCall alone is insufficient because it can still surface the call UI. Do not launch an overlay or publish a blocked-call notification. Do not rely on setSkipCallLog: current Android documentation says it is ignored for ordinary third-party screening apps, and the user permits call records. Do not request default-dialer/default-SMS status, call-log access or READ_CONTACTS merely for this probe. Explicit numbered callers outside contacts are the baseline.\n\nDIAGNOSTICS: collect local/redacted invocation, core-verdict and response-timing evidence without user-visible notifications. Provide empty-rule/nonmatching controls and a way to clear the fixture. Verify role state at launch/resume and distinguish revoked/not-granted states.\n\nBUILD: verify SDK/NDK/cargo-ndk availability, generate fresh bindings/native libraries with tools/build-android.sh and produce an APK with the required ABI; host Kotlin/JNA tests alone do not prove mobile packaging. Avoid modifying unrelated Gradle/build contracts or exported Rust APIs. Use explicit device selection in install/log instructions and keep personal fixture values and generated outputs ignored. Stop at preparation-ready; runtime role acquisition, real calls and no-disturbance acceptance require P017.\n\n---\n**Completion summary:**\nCOMPLETED — Android silent-blocking probe HOST PREPARATION only; physical acceptance is not established.\n\nSHIPPED: apps/android/app/src/main/java/com/antoniopantano/callerfilter/ScreeningService.kt:13/:33/:66 implements the declared BIND_SCREENING_SERVICE-protected service and maps Rust deny to disallow=true/reject=true/skipNotification=true/skipCallLog=false. No overlay, app notification, silence-only shortcut, default-dialer/default-SMS role, contacts or call-log permission. MainActivity.kt:17 supplies role request/status, exact-deny, empty-control and recovery controls. ProbeEngine.kt:49/:63 delegates matching exclusively to existing PreparedRules/evaluateNumber; no Rust API changes or Kotlin matcher. ProbeStore.kt:32/:76/:96 serializes initialization/evaluation/preferences off the callback thread and binds persisted activation to fixture identity. Invalid fixture/core/handle/role and late responses permit calls rather than creating blanket blocks. ProbeResponseGate at ProbeEngine.kt:79 prevents duplicate/late responses; the 3000ms resource-configured watchdog is a local setting, not a measured device deadline guarantee.\n\nDIAGNOSTICS: ProbeDiagnostics.kt records redacted request/reason/rule/flags/timing evidence, not call history or proof of framework acceptance. First-request local bind timing is distinguished from reused bindings and unobserved earlier startup. Native handles/data initialization stay off the callback thread. Consent-based fixture values, generated assets, APKs and evidence stay ignored/private. Clearing deny does not erase the number bundled in an exact-fixture APK; docs explain empty rebuild/uninstall only with consent.\n\nBUILD: tools/build-android.sh and tools/uniffi-android.toml regenerate bindings with UniFFI 0.32 global-config syntax and supported JNA cleanup without raising minSdk or patching generated sources. JNA 5.17 fixes x86_64 16KB alignment; ABI filters advertise only arm64-v8a/armeabi-v7a/x86_64 with both Rust and JNA libraries. Gradle requires generated inputs and includes the private asset. Manifest/backup resources disable backup and data transfer. tools/device-tests/android-probe.py:76/:116/:157 separates verified builds from explicitly selected-device installation/log capture. android-probe.md and README.md document prerequisites, controls, capture, cleanup and limitations.\n\nVERIFIED: final python3 -B tools/device-tests/android-probe.py build --mode exact --alias ready-host-synthetic --number-file target/device-tests/android-host-input/synthetic-number.txt passed fresh three-ABI Rust/native generation, same-generated-binding Kotlin execution of actual Rust exact/nonmatch/empty/recovery and packaged-fixture checks, Python tooling checks, :app:assembleDebug and :app:lintDebug. Lint has 0 errors and 10 non-blocking warnings (dependency updates, prototype icon/English text, KTX and a legacy-backup recommendation despite allowBackup=false); no API-level or alignment errors remain. Signature, asset identity, protected service/DEX inventory, paired ABI set, forbidden permissions, ZIP and ELF64 16KB alignment passed. Six final Python tests passed in /tmp/caller-filter-t021-tools-final.log, including a static source-level role/redaction regression guard added after the APK gate; no application code changed afterward. These do not execute RoleManager or real logcat. Kotlin tests exercise ROLE_UNAVAILABLE/failure-to-allow response mapping, not actual role acquisition. Python syntax, documentation links and git diff --check passed. Unrelated broad Rust/iOS suites were not rerun.\n\nARTIFACT: target/device-tests/android/ready-host-synthetic-asgtxqx5/caller-filter-probe.apk (~12MB), SHA-256 ff34a9d7f52eac612290f81def8e0f100790b041f0e167c9ae1daee3a0aee05b. Sibling build-record.json/build.log/manifest.txt/permissions.txt and /tmp/caller-filter-t021-final.log contain evidence. APK is development-signed and contains a synthetic, NON-CALLABLE fixture. Build a private consented real-caller fixture before physical calls.\n\nREMAINING: real Android native startup, role grant/revocation, framework timing, callbacks and empty/deny/recovery/no-disturbance behavior belong to P017/T022. No installation, app launch, role change, real call, commit or push occurred; staging is empty. No production integration, national partial validation, geography, AND/OR or SMS support is claimed. Preparation is finished. Stop for both phones to be connected and obtain consent for device actions.",
+      "descriptionUpdatedAt": "2026-09-16T14:06:34.139Z",
+      "notes": "",
+      "statusLog": [
+        {
+          "id": "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2-check-001-planned-in-progress",
+          "date": "2026-09-15T14:31:18.208Z",
+          "fromStatus": "planned",
+          "toStatus": "in-progress",
+          "title": "planned → in-progress",
+          "description": ""
+        },
+        {
+          "id": "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2-check-002-in-progress-done",
+          "date": "2026-09-16T14:06:34.137Z",
+          "fromStatus": "in-progress",
+          "toStatus": "done",
+          "title": "in-progress → done",
+          "description": "COMPLETED — Android silent-blocking probe HOST PREPARATION only; physical acceptance is not established.\n\nSHIPPED: apps/android/app/src/main/java/com/antoniopantano/callerfilter/ScreeningService.kt:13/:33/:66 implements the declared BIND_SCREENING_SERVICE-protected service and maps Rust deny to disallow=true/reject=true/skipNotification=true/skipCallLog=false. No overlay, app notification, silence-only shortcut, default-dialer/default-SMS role, contacts or call-log permission. MainActivity.kt:17 supplies role request/status, exact-deny, empty-control and recovery controls. ProbeEngine.kt:49/:63 delegates matching exclusively to existing PreparedRules/evaluateNumber; no Rust API changes or Kotlin matcher. ProbeStore.kt:32/:76/:96 serializes initialization/evaluation/preferences off the callback thread and binds persisted activation to fixture identity. Invalid fixture/core/handle/role and late responses permit calls rather than creating blanket blocks. ProbeResponseGate at ProbeEngine.kt:79 prevents duplicate/late responses; the 3000ms resource-configured watchdog is a local setting, not a measured device deadline guarantee.\n\nDIAGNOSTICS: ProbeDiagnostics.kt records redacted request/reason/rule/flags/timing evidence, not call history or proof of framework acceptance. First-request local bind timing is distinguished from reused bindings and unobserved earlier startup. Native handles/data initialization stay off the callback thread. Consent-based fixture values, generated assets, APKs and evidence stay ignored/private. Clearing deny does not erase the number bundled in an exact-fixture APK; docs explain empty rebuild/uninstall only with consent.\n\nBUILD: tools/build-android.sh and tools/uniffi-android.toml regenerate bindings with UniFFI 0.32 global-config syntax and supported JNA cleanup without raising minSdk or patching generated sources. JNA 5.17 fixes x86_64 16KB alignment; ABI filters advertise only arm64-v8a/armeabi-v7a/x86_64 with both Rust and JNA libraries. Gradle requires generated inputs and includes the private asset. Manifest/backup resources disable backup and data transfer. tools/device-tests/android-probe.py:76/:116/:157 separates verified builds from explicitly selected-device installation/log capture. android-probe.md and README.md document prerequisites, controls, capture, cleanup and limitations.\n\nVERIFIED: final python3 -B tools/device-tests/android-probe.py build --mode exact --alias ready-host-synthetic --number-file target/device-tests/android-host-input/synthetic-number.txt passed fresh three-ABI Rust/native generation, same-generated-binding Kotlin execution of actual Rust exact/nonmatch/empty/recovery and packaged-fixture checks, Python tooling checks, :app:assembleDebug and :app:lintDebug. Lint has 0 errors and 10 non-blocking warnings (dependency updates, prototype icon/English text, KTX and a legacy-backup recommendation despite allowBackup=false); no API-level or alignment errors remain. Signature, asset identity, protected service/DEX inventory, paired ABI set, forbidden permissions, ZIP and ELF64 16KB alignment passed. Six final Python tests passed in /tmp/caller-filter-t021-tools-final.log, including a static source-level role/redaction regression guard added after the APK gate; no application code changed afterward. These do not execute RoleManager or real logcat. Kotlin tests exercise ROLE_UNAVAILABLE/failure-to-allow response mapping, not actual role acquisition. Python syntax, documentation links and git diff --check passed. Unrelated broad Rust/iOS suites were not rerun.\n\nARTIFACT: target/device-tests/android/ready-host-synthetic-asgtxqx5/caller-filter-probe.apk (~12MB), SHA-256 ff34a9d7f52eac612290f81def8e0f100790b041f0e167c9ae1daee3a0aee05b. Sibling build-record.json/build.log/manifest.txt/permissions.txt and /tmp/caller-filter-t021-final.log contain evidence. APK is development-signed and contains a synthetic, NON-CALLABLE fixture. Build a private consented real-caller fixture before physical calls.\n\nREMAINING: real Android native startup, role grant/revocation, framework timing, callbacks and empty/deny/recovery/no-disturbance behavior belong to P017/T022. No installation, app launch, role change, real call, commit or push occurred; staging is empty. No production integration, national partial validation, geography, AND/OR or SMS support is claimed. Preparation is finished. Stop for both phones to be connected and obtain consent for device actions."
+        }
+      ],
+      "decisions": [],
+      "acceptedDecisions": [],
+      "checklist": [
+        {
+          "id": "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2-check-001-declare-and-implement-the-minimal-screening-service-and-role-fixture-status-controls",
+          "number": 1,
+          "title": "Declare and implement the minimal screening service and role/fixture/status controls.",
+          "checked": true
+        },
+        {
+          "id": "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2-check-002-use-the-existing-rust-exact-matcher-and-return-a-timely-block-response-with-notification-suppression-preserve-allowed-call-controls",
+          "number": 2,
+          "title": "Use the existing Rust exact matcher and return a timely block response with notification suppression; preserve allowed-call controls.",
+          "checked": true
+        },
+        {
+          "id": "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2-check-003-add-focused-tests-for-verdict-to-response-mapping-invalid-fixture-role-states-and-redacted-diagnostics",
+          "number": 3,
+          "title": "Add focused tests for verdict-to-response mapping, invalid fixture/role states and redacted diagnostics.",
+          "checked": true
+        },
+        {
+          "id": "d7a9cc93-0db8-47a8-b439-73b1ea8c41a2-check-004-build-an-apk-with-fresh-native-libraries-bindings-and-document-installation-role-authorization-log-capture-and-cleanup",
+          "number": 4,
+          "title": "Build an APK with fresh native libraries/bindings and document installation, role authorization, log capture and cleanup.",
+          "checked": true
+        }
+      ],
+      "subtasks": [],
+      "dependsOn": [
+        "229e5dfb-2894-4413-8246-d4b24d911cb4"
+      ],
+      "pauseSnapshot": null,
+      "pauseHistory": [],
+      "startedAt": "2026-09-15T14:31:18.208Z",
+      "completedAt": "2026-09-16T14:06:34.137Z",
+      "createdAt": "2026-09-14T18:36:29.555Z",
+      "updatedAt": "2026-09-16T14:06:34.137Z",
+      "sessionInfo": [
+        {
+          "sessionId": "pi:01a090d0-5a08-727b-af7a-87dad496f0b2",
+          "createdAt": "2026-09-15T19:53:25.078Z"
+        }
+      ],
+      "activeOwnerSession": ""
+    }
+  ],
+  "createdAt": "2026-09-14T18:33:54.642Z",
+  "updatedAt": "2026-09-16T14:07:22.752Z",
+  "handoff": "",
+  "handoffUpdatedAt": "2026-09-15T20:13:33.718Z",
+  "handoffAudit": null,
+  "handoffReadAt": "",
+  "handoffHistory": [
+    {
+      "file": "handoff-archive/8fe80cd3-794a-446f-86cf-61c3884f48d3-2026-09-16T14-06-34-146Z.md",
+      "clearedAt": "2026-09-16T14:06:34.146Z",
+      "reason": "phase-done"
+    },
+    {
+      "file": "handoff-archive/8fe80cd3-794a-446f-86cf-61c3884f48d3-2026-09-15T20-13-33-706Z.md",
+      "clearedAt": "2026-09-15T20:13:33.706Z",
+      "reason": "superseded"
+    }
+  ],
+  "statusLog": [
+    {
+      "id": "ddb749c7-c392-434a-a923-3aabd3775b63",
+      "date": "2026-09-15T07:51:14.080Z",
+      "fromStatus": "draft",
+      "toStatus": "in-progress",
+      "title": "draft → in-progress",
+      "description": ""
+    },
+    {
+      "id": "ae3dbc13-53e3-4e96-a0e1-096c5f671c9c",
+      "date": "2026-09-16T14:06:34.165Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
+      "description": ""
+    }
+  ],
+  "sessionInfo": [
+    {
+      "sessionId": "pi:01a090d0-5a08-727b-af7a-87dad496f0b2",
+      "createdAt": "2026-09-15T19:53:25.078Z"
+    }
+  ]
+}

@@ -4,16 +4,33 @@
   "shortId": "UMGZW",
   "priority": 4,
   "name": "Shared filtering core (Rust)",
-  "description": "The filtering engine. One implementation, used by both platforms, with no OS calls in it. Per Project Guidelines §3, all filtering logic lives here and nowhere else.\n\nCURRENT STATE: nothing built. The Python prototypes in the session scratchpad (expand.py, generic.py) prove the expansion arithmetic works against real libphonenumber metadata across all 245 territories; they are throwaway and this feature replaces them.\n\nAPI SHAPE:\n  normalize(raw, defaultRegion) -> E164\n  evaluate(E164, RuleSet) -> Allow | Block | Silence | Label(text)\n  geocode(E164, language) -> Country / Region / City\n  expand(Rule, limit) -> sorted exact numbers, or TooBroad(count)\n  explain(Rule) -> expansion count + per-platform verdict\n\nWHAT IT MUST DO:\n- Rule model covering exact number, pattern, starts-with, ends-with, prefix, caller ID, and location, each as deny or allow (R2).\n- Precedence: most specific wins, so an allow on an exact number beats a deny on the range containing it. Equally specific conflicts are reported, never silently resolved.\n- Expansion for iOS calls, driven by possibleLengths AND nationalNumberPattern. The regex must prune — length-summing alone materially overestimates, badly for landlines (DE fixedLine has 11 possible lengths, 5 to 15).\n- Allow-exceptions resolved at expansion time by set subtraction, since CallKit has no allow list.\n- Prefix-to-place geocoding. The `phonenumber` crate (0.3.10+9.0.33) gives parse/validate/format but NO geocoder — we implement it as a prefix trie over libphonenumber's geocoding files, with user-language then English then prefix-only fallback (R7).\n- Report expansion size and per-platform verdict for any rule, from real data (R2 honesty requirement).\n\nCONSTRAINTS: no country, prefix, length or place name in code (Guidelines §1) — all of it comes from the datasets in F003. The entry limit is injected configuration measured in F001, never a constant (Guidelines §4). Rules are the stored truth; expansions are derived and never persisted as rules (Guidelines §2).\n\nExposed to Kotlin and Swift via UniFFI. Rust was chosen over Kotlin Multiplatform because its C ABI also reaches HarmonyOS if Huawei is ever taken on.\n\nTESTABILITY: this feature is pure logic with no platform dependency, so it can be fully tested on the host before either app exists. It should be, since a filtering bug here is a bug on every platform at once.",
-  "descriptionUpdatedAt": "2026-09-08T08:28:40.084Z",
+  "description": "Shared OS-independent Rust filtering engine. P002–P005 are delivered and host-verified; platform shells adapt the core rather than implement filtering again. Rule storage remains authored intent, never expanded lists.\n\nIMPLEMENTATION: core/src/rule.rs:360/:580 defines matchers and RuleSet; core/src/evaluate.rs:123 applies specificity and exposes ties. Exact numbers, patterns, starts-with/prefix sets, suffixes, caller ID and resolved location rules support allow/deny. The most specific rule wins; equally specific conflicts are surfaced. Existing public Decision::Silence/Label types remain, but the FFI work did not invent new filtering behavior for them.\n\ncore/src/normalize.rs:81 parses/validates against injected metadata. core/src/expand.rs:279/:300/:491 provides arithmetic candidate ceilings and incremental sorted/deduplicated number expansion with allow subtraction. Regex constraints remain necessary, but measured leading-digit-only patterns in several territories cannot rescue huge ranges; there is no general promise of dramatic tail pruning. Overly broad rules return real counts/ceilings rather than silently truncating.\n\ncore/src/geocode.rs:55/:165/:175 implements ordered place datasets, geographic classification and flat place/language results. Location resolution returns all associated prefixes, not one. Requested-language then fallback ordering is supplied by callers. NotGeographic and missing data remain distinct; place information is approximate. Actual dataset lookup uses sorted prefix-length groups rather than the original unimplemented trie sketch.\n\nP005 exposes these existing operations through core/src/ffi.rs:244/:309/:356/:419/:489/:556: immutable owned snapshots/prepared rules, typed errors/conflicts/explanations, version diagnostics and bounded synchronous expansion callbacks. Place-derived rules retain exact snapshot identity, while direct rules are portable. Whole-output limits apply after merge/dedup/allow subtraction, before any delivery. Callback cancellation/errors, reentry and thread safety are exercised in generated Swift and Kotlin/JNA bindings. Bindings are generated at build time and remain ignored, never committed.\n\nRuntime numbering data is now packaged: core/src/number_metadata.rs:38/:55/:95 validates CFNM v1 framed postcard bytes and dependency preconditions; datasets/src/bin/build-number-metadata.rs:11 converts XML only at build time. CFDS place data uses core/src/dataset.rs. Content versions may update independently of code. The DTO dependency is pinned and a frozen nonempty fixture guards wire compatibility. P007 retains OTA delivery ownership.\n\nVERIFICATION: T018 final gate passed 175 nonignored workspace tests, fmt, clippy -D warnings, docs/source/data checks and real Swift/Kotlin host execution. Release measurements isolate runtime loading (112.18 ms cold parse, 4,153,627-byte peak Rust allocation; 6,017,437-byte old/new coexistence peak). FFI streaming memory remains bounded across a 10x output increase. Details and reproducible commands: tools/ffi-tests/README.md and P005/T018 completion evidence.\n\nLIMITS: production app/OS integration and device extension memory budgets remain unverified. Eager data loading must be off the live evaluation path; allocation figures are not RSS or device limits. phonenumber's compiled country enum still restricts genuinely new geographic region IDs, despite supporting runtime data updates for existing IDs. The FFI safely rejects unknown shared-code IDs but does not claim to solve that inherited dependency constraint. No country allowlist, core algorithm rewrite, commit or push was introduced.\n\nPOST-COMPLETION AUDIT — UNRESOLVED ORIGINAL R2 REQUIREMENT: The delivered internal matcher and FFI tests do not establish complete support for user-authored national partial numbers. core/src/rule.rs:203 Pattern::parse checks syntax only. core/src/ffi.rs:399 matcher_from_input uses Digits::parse/Pattern::parse without numbering-plan validation, and prepare_rules_for_snapshot does not normalize national patterns. Matching uses international digits. With IT supplied as context, 0852296xxxx requires +390852296xxxx semantics while retaining the authored rule; that preparation is currently absent. Complete-number validation exists separately in core/src/normalize.rs:81 through phonenumber::parse_with/is_valid_with, but FFI rule constructors can bypass it. The installed dependency is whisperfish/rust-phonenumber 0.3.10+9.0.33; it validates numbering plans, not assignment or reachability, and does not define our wildcard semantics. National-pattern preparation and a consistently enforced rule-validation entry point remain unresolved core work, not a new optional feature or shell responsibility. The previous completion evidence must not be read as proving the whole R2 input path. No source changes or task reopen were performed in this audit. Global scope and the accepted new-country dependency-release exception now live in project Accepted Decisions; this feature retains implementation facts only.",
+  "descriptionUpdatedAt": "2026-09-14T07:15:49.959Z",
   "discussedAt": "",
   "contextReady": false,
   "contextReadyReason": "",
   "startDate": "",
   "endDate": "",
-  "workDone": "",
-  "workRemaining": "",
-  "acceptedDecisions": [],
+  "workDone": "P002 rule/evaluation, P003 normalization/expansion, P004 geocoder and P005 owned UniFFI boundary are delivered. P005 additionally closes runtime numbering packaging and verifies generated Swift/Kotlin calls, typed failures, snapshot ownership, aggregate limits and streaming memory. Final gate: 175 workspace tests pass; host binding programs execute successfully. All source/planner changes remain uncommitted as requested.",
+  "workRemaining": "No implementation remains in P005's approved host slice. Track production shell/OS integration and real-device budgets in their owning phases; OTA remains P007. The inherited phonenumber country::Id enum limitation for brand-new geographic region IDs requires a separately agreed dependency/core change. Existing ignored distribution and real-data suites were not rerun in P005; see T018/README for verification boundaries.",
+  "acceptedDecisions": [
+    {
+      "id": "b735b460-7980-466b-977e-dfe7ade3270b",
+      "title": "Include runtime numbering-data packaging in the FFI phase",
+      "decision": "P005/T018 includes the missing runtime-loadable numbering metadata packaging alongside UniFFI adapters, memory/startup checks and tests through generated Swift and Kotlin bindings.",
+      "rationale": "The current core operations require numbering metadata, but repository packaging currently covers place data only. Exposing a bundled-only database would not meet the runtime-data requirement. The user explicitly approved including this prerequisite in P005.",
+      "implementationNotes": "Convert upstream XML at build time only and validate a versioned binary payload before making a runtime snapshot available. Preserve existing core APIs. Measure initialization and memory costs; do not claim lazy loading or device-budget compliance from host tests. P007 still owns OTA delivery. Present exact source/config/test files for approval before edits. Do not use Graphify.",
+      "acceptedAt": "2026-09-11T14:32:45.323Z"
+    },
+    {
+      "id": "8ecdc583-f53e-4a3d-8298-48ff3b006eec",
+      "title": "Use immutable FFI snapshots and bounded synchronous callbacks",
+      "decision": "Expose existing Rust behavior through owned UniFFI adapters and fully validated immutable dataset snapshots. Stream expansion through synchronous bounded callbacks using the existing iterator rather than rewriting it into an owned cursor. Verify generated Swift and Kotlin bindings with a host harness.",
+      "rationale": "The user approved the exact implementation scope. Callbacks keep the borrowed iterator alive within one Rust call, avoiding self-referential state and unnecessary changes to the proven expander.",
+      "implementationNotes": "Implement in core/src/ffi.rs and number_metadata.rs, associated approved tests and packaging binary, and tools/test-ffi.sh plus tools/ffi-tests/. Preserve public APIs, keep all filtering in Rust, validate batch size and propagate cancellation/errors. No callback under a Rust lock. No generated bindings committed. Measure eager loading memory/startup; host checks do not prove device budgets. Parent reviews Luna implementation before completion.",
+      "acceptedAt": "2026-09-11T14:34:54.491Z"
+    }
+  ],
   "phaseIds": [
     "f2ebcc6f-be9a-4c65-843f-d89765b78397",
     "9b37746d-bcee-4254-abd7-00d250e8567c",
@@ -29,11 +46,23 @@
       "toStatus": "in-progress",
       "title": "planned → in-progress",
       "description": ""
+    },
+    {
+      "id": "afc89c24-1407-4515-980f-e74e024a2df1",
+      "date": "2026-09-13T09:14:56.277Z",
+      "fromStatus": "in-progress",
+      "toStatus": "done",
+      "title": "in-progress → done",
+      "description": ""
     }
   ],
   "createdAt": "2026-09-08T08:28:40.076Z",
-  "updatedAt": "2026-09-08T10:02:47.549Z",
+  "updatedAt": "2026-09-14T07:17:18.175Z",
   "sessionInfo": [
+    {
+      "sessionId": "pi:01a090d0-5a08-727b-af7a-87dad496f0b2",
+      "createdAt": "2026-09-12T11:12:06.775Z"
+    },
     {
       "sessionId": "mcp-process:24483334-5f42-42eb-9b01-2f39eceecde9",
       "createdAt": "2026-09-10T14:46:32.514Z"

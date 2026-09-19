@@ -7,11 +7,19 @@ settings:
   base:
     DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
     CODE_SIGN_STYLE: Automatic
+    ENABLE_DEBUG_DYLIB: NO
+    SWIFT_VERSION: "5.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.0"
 targets:
   LimitTest:
     type: application
     platform: iOS
-    sources: [App]
+    sources:
+      - App
+      - Shared
+      - path: HarnessFixture.json
+        buildPhase: resources
     dependencies:
       - target: CallDir
         embed: true
@@ -22,15 +30,25 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
+    info:
+      path: App/Info.plist
+      properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
   CallDir:
     type: app-extension
     platform: iOS
-    sources: [CallDir]
+    sources:
+      - CallDir
+      - Shared
+      - path: HarnessFixture.json
+        buildPhase: resources
     info:
       path: CallDir/Info.plist
       properties:
-        LimitTestN: "1900000"
-        LimitTestMode: identification
         NSExtension:
           NSExtensionPointIdentifier: com.apple.callkit.call-directory
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).CallDirectoryHandler

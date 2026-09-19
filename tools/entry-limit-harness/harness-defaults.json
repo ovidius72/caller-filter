@@ -1,0 +1,6 @@
+{
+  "syntheticBase": "100000000000",
+  "progressEvery": 500000,
+  "retryDelaySeconds": 10,
+  "maximumRetries": 40
+}

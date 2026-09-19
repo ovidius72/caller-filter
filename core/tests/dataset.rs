@@ -57,3 +57,44 @@ fn a_future_layout_is_refused_rather_than_misread() {
         DatasetError::UnsupportedFormat(FORMAT_VERSION + 1)
     );
 }
+
+#[test]
+fn duplicate_length_groups_are_rejected_instead_of_overwritten() {
+    let mut bytes = Builder::new().build(Kind::Places, "", "").unwrap();
+    let at = bytes.len() - 2;
+    bytes[at..].copy_from_slice(&2u16.to_le_bytes());
+    for _ in 0..2 {
+        bytes.push(1);
+        bytes.extend_from_slice(&0u32.to_le_bytes());
+    }
+    assert_eq!(
+        Dataset::parse(&bytes).unwrap_err(),
+        DatasetError::DuplicateLength { length: 1 }
+    );
+}
+
+#[test]
+fn impossible_allocation_counts_and_unknown_kinds_are_rejected() {
+    let mut bytes = Builder::new().build(Kind::Places, "", "").unwrap();
+    bytes[16..20].copy_from_slice(&u32::MAX.to_le_bytes());
+    assert_eq!(
+        Dataset::parse(&bytes).unwrap_err(),
+        DatasetError::CountTooLarge
+    );
+    let mut bytes = sample();
+    bytes[6..8].copy_from_slice(&u16::MAX.to_le_bytes());
+    assert_eq!(
+        Dataset::parse(&bytes).unwrap_err(),
+        DatasetError::UnknownKind(u16::MAX)
+    );
+}
+
+#[test]
+fn trailing_bytes_are_refused_rather_than_ignored() {
+    let mut bytes = sample();
+    bytes.extend_from_slice(b"garbage");
+    assert_eq!(
+        Dataset::parse(&bytes).unwrap_err(),
+        DatasetError::TrailingBytes
+    );
+}

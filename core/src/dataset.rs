@@ -75,6 +75,12 @@ pub enum DatasetError {
     PrefixTooLong { prefix: String },
     /// Entries are out of order, so lookups would silently miss.
     Unsorted,
+    /// The same prefix-length group occurs more than once.
+    DuplicateLength { length: u8 },
+    /// The header requests an allocation too large for this format reader.
+    CountTooLarge,
+    /// Bytes remain after the declared dataset payload.
+    TrailingBytes,
 }
 
 /// One prefix and the name it resolves to.
@@ -221,6 +227,9 @@ impl Dataset {
         let upstream = r.string()?;
 
         let name_count = r.u32()?;
+        if u64::from(name_count) > r.remaining() / 4 {
+            return Err(DatasetError::CountTooLarge);
+        }
         let mut names = Vec::with_capacity(name_count as usize);
         for _ in 0..name_count {
             names.push(r.string()?);
@@ -230,7 +239,13 @@ impl Dataset {
         let mut groups = BTreeMap::new();
         for _ in 0..group_count {
             let length = r.u8()?;
+            if groups.contains_key(&length) {
+                return Err(DatasetError::DuplicateLength { length });
+            }
             let count = r.u32()?;
+            if u64::from(count) > r.remaining() / 8 {
+                return Err(DatasetError::CountTooLarge);
+            }
             let mut group = Vec::with_capacity(count as usize);
             let mut previous: Option<u32> = None;
             for _ in 0..count {
@@ -248,6 +263,9 @@ impl Dataset {
             groups.insert(length, group);
         }
 
+        if !r.is_empty() {
+            return Err(DatasetError::TrailingBytes);
+        }
         Ok(Dataset {
             kind,
             language,
@@ -363,6 +381,14 @@ impl<'a> Cursor<'a> {
     fn u32(&mut self) -> Result<u32, DatasetError> {
         let b = self.take(4)?;
         Ok(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+    }
+
+    fn remaining(&self) -> u64 {
+        (self.bytes.len().saturating_sub(self.at)) as u64
+    }
+
+    fn is_empty(&self) -> bool {
+        self.at == self.bytes.len()
     }
 
     fn string(&mut self) -> Result<String, DatasetError> {

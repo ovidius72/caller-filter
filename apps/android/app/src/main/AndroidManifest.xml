@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="Caller Filter"
+        android:label="Caller Filter Probe"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/probe_data_extraction_rules"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.DayNight">
+        <service
+            android:name=".ScreeningService"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

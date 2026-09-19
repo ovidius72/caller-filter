@@ -19,5 +19,7 @@ name = "uniffi-bindgen"
 path = "src/bin/uniffi-bindgen.rs"
 
 [dependencies]
-phonenumber = { workspace = true }
+# CFNM v1 serializes this dependency's DTO. Upgrade only with the golden test.
+phonenumber = "=0.3.10"
 uniffi = { workspace = true }
+postcard = { version = "1", features = ["alloc", "use-std"] }

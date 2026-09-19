@@ -40,7 +40,8 @@ echo "==> generating Kotlin bindings (from the host library)"
 cargo build --profile $BINDINGS_PROFILE -p callerfilter-core
 cargo run --profile $PROFILE --bin uniffi-bindgen -- generate \
   --library "$(tools/host-cdylib.sh "$LIB" "$BINDINGS_PROFILE")" \
-  --language kotlin --out-dir "$GEN/kotlin" --no-format
+  --language kotlin --out-dir "$GEN/kotlin" --no-format \
+  --config tools/uniffi-android.toml
 
 echo
 echo "==> core size per ABI (watch this)"

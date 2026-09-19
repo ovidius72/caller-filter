@@ -1,0 +1,18 @@
+<!-- Synthetic test-only numbering. Not production country data. -->
+<phoneNumberMetadata>
+  <territories>
+    <territory id="IT" countryCode="39" internationalPrefix="00">
+      <generalDesc><nationalNumberPattern>[03]\d{9}</nationalNumberPattern></generalDesc>
+      <fixedLine>
+        <possibleLengths national="10"/>
+        <exampleNumber>0200000000</exampleNumber>
+        <nationalNumberPattern>0\d{9}</nationalNumberPattern>
+      </fixedLine>
+      <mobile>
+        <possibleLengths national="10"/>
+        <exampleNumber>3000000000</exampleNumber>
+        <nationalNumberPattern>3\d{9}</nationalNumberPattern>
+      </mobile>
+    </territory>
+  </territories>
+</phoneNumberMetadata>

@@ -16,3 +16,4 @@ path = "src/main.rs"
 
 [dependencies]
 callerfilter-core = { path = "../core" }
+phonenumber = { workspace = true }

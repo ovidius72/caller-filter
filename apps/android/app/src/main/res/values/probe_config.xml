@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Operator-test setting, not a measured phone threshold. Leave headroom
+         below the SDK's five-second deadline; verify actual timing on hardware. -->
+    <integer name="probe_response_budget_ms">3000</integer>
+</resources>
